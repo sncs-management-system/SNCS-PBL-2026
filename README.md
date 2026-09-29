@@ -1,1 +1,1 @@
-# sncs-management-system
+# SNCS-PBL-2026
