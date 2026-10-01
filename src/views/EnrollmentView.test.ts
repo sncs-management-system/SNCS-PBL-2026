@@ -9,7 +9,7 @@ describe('enrollment applicant workflow', () => {
   const fetchMock = vi.fn();
   const captcha = { template: '<button type="button" @click="$emit(\'token\', \'test-token\')">Complete security check</button>', emits: ['token'], methods: { reset() {} } };
   beforeEach(() => {
-    fetchMock.mockReset().mockResolvedValue({ ok: true, json: async () => ({ status: 'open', schoolYear: '2026-2027', siteKey: 'test-key' }) });
+    fetchMock.mockReset().mockResolvedValue({ ok: true, json: async () => ({ status: 'open', schoolYear: '2026-2027', periodId: '1', siteKey: 'test-key' }) });
     vi.stubGlobal('fetch', fetchMock);
   });
   afterEach(() => { wrapper?.unmount(); vi.unstubAllGlobals(); });
@@ -23,7 +23,7 @@ describe('enrollment applicant workflow', () => {
     }
   }
   it('shows closed enrollment without rendering a submit form', async () => {
-    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ status: 'closed', schoolYear: '2026-2027', siteKey: 'test' }) });
+    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ status: 'closed', schoolYear: '', periodId: null, siteKey: 'test' }) });
     await render(); expect(wrapper.text()).toContain('Enrollment is currently closed'); expect(wrapper.find('form').exists()).toBe(false);
   });
   it('fails closed when configuration is unavailable and lets the user retry', async () => {
@@ -47,19 +47,21 @@ describe('enrollment applicant workflow', () => {
     expect((wrapper.get('#firstName').element as HTMLInputElement).value).toBe('Test');
   });
   it('submits only after review, confirmation and CAPTCHA, then shows saved receipt', async () => {
-    await render(); await fill(); await wrapper.get('#siblings').setValue('2'); await wrapper.get('form').trigger('submit'); await flushPromises();
+    await render(); await fill(); await wrapper.get('form').trigger('submit'); await flushPromises();
     expect(wrapper.get('button[type=submit]').attributes('disabled')).toBeDefined();
-    await wrapper.get('input[type=checkbox]').setValue(true);
+    await wrapper.get('#confirmation').setValue(true);
+    expect(wrapper.get('button[type=submit]').attributes('disabled')).toBeDefined();
+    await wrapper.get('#privacyConsent').setValue(true);
     await wrapper.get('#captcha button').trigger('click');
     fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ reference: 'SNCS-TEST-RECEIPT', status: 'Pending', message: 'Proceed to the Registrar’s Office.' }) });
     await wrapper.get('form').trigger('submit'); await flushPromises();
     expect(wrapper.text()).toContain('SNCS-TEST-RECEIPT'); expect(wrapper.text()).toContain('Pending'); expect(wrapper.find('form').exists()).toBe(false);
     const payload = JSON.parse(fetchMock.mock.calls[1][1].body.get('application'));
-    expect(payload.siblings).toBe('2');
+    expect(payload.privacyConsent).toBe(true); expect(payload.periodId).toBe('1');
   });
   it('keeps the same submission identifier after an uncertain network failure', async () => {
     await render(); await fill(); await wrapper.get('form').trigger('submit'); await flushPromises();
-    await wrapper.get('input[type=checkbox]').setValue(true); await wrapper.get('#captcha button').trigger('click');
+    await wrapper.get('#confirmation').setValue(true); await wrapper.get('#privacyConsent').setValue(true); await wrapper.get('#captcha button').trigger('click');
     fetchMock.mockRejectedValueOnce(new Error('network failure'));
     await wrapper.get('form').trigger('submit'); await flushPromises();
     expect(wrapper.text()).toContain('could not confirm'); expect(wrapper.find('.receipt-reference').exists()).toBe(false);

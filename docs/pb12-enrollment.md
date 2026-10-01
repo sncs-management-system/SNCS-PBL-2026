@@ -1,131 +1,135 @@
-# PB-12: Submit an enrollment application online
+# PB-12: Enrollment application — team schema mapping
 
 Branch: `enrollment-application`. Public route: `/enrollment`.
 
-This implements the public submission story. Applications are stored as **Pending**
-with a unique reference; the applicant is directed to the Registrar’s Office.
-Submitting is not final registration, an admission decision, or a payment.
-Registrar screens and account management remain separate backlog items.
+`supabase/reference/SNCS_Schema_Final.sql` is an unchanged copy of the schema
+supplied by Jan. It is the source of truth for persistence and required fields.
+The public feature remains JHS/SHS, as requested; the schema also permits preschool
+and grade_school, but no registration forms for those levels were supplied.
 
-## Configure the team's existing Supabase project
+## Database setup
 
-1. Review and apply `supabase/migrations/202610010001_pb12_enrollment.sql` using
-   your team's migration process or Supabase SQL editor. It creates only PB-12
-   tables, the submission function, and a private `enrollment-documents` bucket.
-   Coordinate these names with the EN-01 owner before applying to a shared project.
-2. Copy `.env.example` to `.env` and fill in the existing Supabase URL and server
-   service-role key. Keep `.env` untracked. No secret belongs in a `VITE_*` variable.
-3. Create a Cloudflare Turnstile widget for your site (include `localhost` for local
-   development). Set its public site key, secret key, and exact expected hostname
-   in `.env`. The API checks hostname and action `enrollment`, not just success.
-4. Set `APP_ORIGIN` to the exact website origin. Generate a stable random
-   `IP_HASH_SECRET` with at least 32 characters, shared by every API instance.
-   For example: `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`.
-5. The migration defaults to **closed**. Confirm the intended school year, then
-   explicitly open it for the Sprint 1 demo:
+1. Use the team's existing database with `SNCS_Schema_Final.sql` already installed.
+   For an empty development database, install that reference schema first.
+   Do not rerun its CREATE TABLE statements against an existing database.
+2. Apply `supabase/migrations/202610010002_pb12_schema_alignment.sql`. It uses the
+   existing `enrollment_periods`, `enrollment_applications`, `application_guardians`,
+   and `application_documents` tables without adding or changing their columns.
+   It adds a submission function, an IP/time index, access grants, a private bucket,
+   and `enrollment_submission_receipts` for retry IDs and payload hashes only.
+3. The old `202610010001_pb12_enrollment.sql` is retired and now a no-op. If its
+   original standalone tables were already installed, preserve their records and
+   reconcile that database separately before using this implementation. The new
+   migration detects the incompatible legacy application table and stops without
+   dropping or converting data. No hosted database has been modified by this change.
+4. Copy `.env.example` to `.env`; configure the existing Supabase URL/server
+   service-role key, Turnstile site/secret keys, exact hostname, and website origin.
+   Keep secrets out of `VITE_*` variables. The API verifies Turnstile hostname and
+   action `enrollment`. Generate a stable random `IP_HASH_SECRET` of 32+ characters
+   and use the same value for all API instances.
+5. Select or create the intended row in `enrollment_periods`, then open it using
+   the team's database workflow. The schema allows at most one open period. The
+   feature reads that row's ID and school year. No open row means enrollment is
+   closed; the feature does not seed, open, or close enrollment automatically.
 
-   ```sql
-   update public.enrollment_settings
-   set status = 'open', school_year = '2026-2027'
-   where id = 1;
-   ```
+Use Node.js 22.12+ and pnpm. Run `pnpm install`, `pnpm dev:server`, and `pnpm dev`
+(the latter two in separate terminals). Vite proxies `/api` to port 3001.
+For production, run `pnpm build`, set `NODE_ENV=production`, then `pnpm start`.
+The Express process serves the built website and API from one origin. Install
+`tsx` with the development dependencies for this start command. If your platform
+injects variables instead of providing `.env`, use `pnpm exec tsx server/index.ts`.
+Set `HOST=0.0.0.0` if required by the host; use HTTPS at the reverse proxy.
+`TRUSTED_PROXIES` must contain only actual proxy IPs/CIDRs so the rate limiter sees
+the correct client address. Forwarded headers are otherwise ignored.
 
-   Close it by setting `status = 'closed'`. There is no public settings endpoint.
+## Field-to-column mapping
 
-Use Node.js 22.12+ (Node 24 LTS recommended) and pnpm. Run `pnpm install`, then
-`pnpm dev:server` and `pnpm dev` in separate terminals. Open `/enrollment` on the
-Vite URL. Vite proxies `/api` to port 3001. If changing that port, update the proxy.
+UI labels remain readable; the server converts them to the schema's exact names
+and enum values in `server/enrollment-mapping.ts`.
 
-For deployment, run `pnpm build`, set `NODE_ENV=production`, and run `pnpm start`.
-The Express process serves both `dist` and `/api` from one origin. Install the
-development dependencies as well because the current start command uses `tsx`.
-Alternatively use `pnpm exec tsx server/index.ts` with platform-injected variables
-when there is no `.env` file. Set `HOST=0.0.0.0` if required by your host. Use HTTPS
-at the host/reverse proxy. Only configure `TRUSTED_PROXIES` with the actual trusted
-proxy IPs/CIDRs; forwarded client IPs are otherwise ignored. Confirm real client
-IP attribution on that host before using the rate limit in production.
-
-Missing configuration, database failures, and CAPTCHA failures do not return a
-success receipt. There is no in-memory or browser-storage submission fallback.
-
-## Field mapping and implementation assumptions
-
-Source references supplied for this feature: `Student_Registration_Form_JHS.xlsx`
-and `Student_Registration_Form_SHS.xlsx`. The five worksheets in each are mapped
-as follows. No applicant records or source files are committed to the repository.
-
-| Source worksheet | Online form fields |
+| Form value | Database destination |
 | --- | --- |
-| Student Information | Student email; parent email; parent/guardian Messenger account; surname, first and middle names; school year; New/Old/Returnee status; grade; SHS strand; payment preference; birthday; calculated age; gender; complete address; birthplace; religion; contact numbers |
-| Father's Information | Surname, first and middle names; occupation; contact numbers; office address |
-| Mother's Information | Maiden surname, first and middle names; occupation; contact numbers; office address |
-| Guardian's Information | Surname, first and middle names; relationship; occupation; contact numbers; office address; number of siblings |
-| Last School Attended | Grade; section; class adviser; principal; former school name and complete address |
+| School year | Read from `enrollment_periods.school_year`; saved through `enrollment_applications.period_id` |
+| JHS / SHS | `department`: `jhs` / `shs` |
+| New / Old / Returnee | `applicant_type`: `new` / `old` / `returnee` |
+| Grade level, SHS strand | `grade_level`, `strand`; JHS strand is SQL NULL |
+| Full Payment/Cash, Monthly, Quarterly, Semi-Annual | `mode_of_payment`: `full_cash`, `monthly`, `quarterly`, `semi_annual` |
+| Student surname, first name, middle name | `surname`, `first_name`, `middle_name` |
+| Birthday, displayed age | `birth_date`; age is calculated for display, never stored |
+| Male / Female | `gender`: `male` / `female` |
+| Place of birth, religion | `place_of_birth`, `religion` |
+| Complete address, contact numbers | `complete_address`, `contact_numbers` |
+| Student email, parent email | `email`, `parent_email` |
+| Parent/guardian Messenger account | `guardian_messenger` |
+| Former school name/address | `last_school_name`, `last_school_address` |
+| Father, mother, guardian full names | Separate `application_guardians` rows: `relationship`, `full_name` |
+| Each parent's/guardian's occupation and contact | `application_guardians.occupation`, `contact_number` |
+| Optional supporting document | `application_documents`: `application_id`, `document_type = supporting_document`, private `storage_path` |
+| Explicit privacy consent checkbox | Required by API; `privacy_consent_at` generated by the database at first successful submission |
+| Reference, initial status, submission time, hashed IP | Server/database-generated `reference_no`, `status = pending`, `submitted_at`, `submitter_ip_hash` |
 
-The source has 43 JHS columns and 44 SHS columns. The online form adds a school-level
-selector. Layout and whitespace are normalized; content options are preserved:
+The UI shows **Pending** as a readable label; the database stores **pending**.
+Applicants cannot set status, reference number, registrar remarks, or consent time.
+Every related row uses the generated BIGINT application ID. Blank nullable inputs
+are saved as SQL NULL. BIGINT period IDs travel through the API as strings.
 
-- JHS: Grades 7–10; no strand input or stored SHS strand.
-- SHS Grade 11: `11-ACADEMIC`, `11-TECHPRO`.
-- SHS Grade 12: `12-STEM`, `12-HUMSS`, `12-GAS`, `12-ABM`, `12-ICT`.
-- Payment: Full Payment/Cash, Monthly, Quarterly, Semi-Annual. This is a preference;
-  no payment provider or online payment is introduced.
-- Gender: Male/Female, matching the supplied forms.
+Religion and Messenger are now required because the schema marks them NOT NULL.
+Middle name, parent email, and last-school details are optional. Father/mother/
+guardian sections may be omitted; any section containing occupation or contact
+requires a full name to satisfy `application_guardians.full_name`.
 
-The spreadsheets do not identify required fields. Current implementation requires
-enrollment selections; student first/surname, email, birthday, gender, address,
-birthplace and phone; guardian first/surname, relationship and phone; and previous
-school name/address. Father/mother details, middle names, parent email, Messenger,
-religion, siblings, and other previous-school details are optional. A parent can
-be entered as the guardian. Confirm these rules with the school before release;
-edit `src/lib/enrollment/form.ts` to update both browser and API validation.
+The earlier Excel forms include fields absent from this schema. The updated UI
+therefore no longer collects parent/guardian office addresses, sibling count,
+the guardian's specific relation to the student, previous grade/section, class
+adviser, or principal. Parent names use one full-name field rather than three
+separate name columns; the mother field asks for the full maiden name. The fixed
+father/mother/guardian section supplies the `relationship` enum. These omissions
+are explicit rather than silently discarding submitted information.
 
-School year comes from the database. Age is calculated again on the server using
-the date in Manila. Optional emails and telephone numbers are validated when
-provided; multiple phone numbers are comma-separated. Unknown payload properties
-are discarded, and clients cannot choose processing status or reference number.
+The Excel grade/strand options remain: JHS Grades 7–10; Grade 11 ACADEMIC/TECHPRO;
+Grade 12 STEM/HUMSS/GAS/ABM/ICT (stored with the form's grade-prefixed strand labels).
+The form has 29 JHS or 30 SHS fields, including the derived school year and age,
+plus the optional attachment and review/consent controls.
 
-The supplied PB-12 story also calls for file type/size validation without naming a
-required document. This implementation provides one **optional** supporting file
-(PDF/JPG/PNG, maximum 5 MB), with extension, MIME, and signature checks. Uploads
-are private and there is no public download endpoint. Signature checks are not
-malware scanning; a future staff document-viewing workflow must address that before
-opening untrusted files. No document checklist or signed policy is invented.
+## Submission behavior
 
-## Submission and reliability
+The browser validates, shows a review, and requires both accuracy confirmation and
+explicit privacy consent plus Turnstile. The API validates again and checks that
+the selected period is still active, even if another period has the same school
+year. It uploads an optional PDF/JPG/PNG (maximum 5 MB; MIME, extension, and signature
+checks) to private Storage, then calls `submit_pb12_enrollment`.
 
-- The browser validates, presents a review, requires confirmation and Turnstile,
-  then sends multipart data to `POST /api/enrollment/applications`.
-- The API validates again, verifies Turnstile server-side, uploads an optional
-  document privately, and calls the database submission function.
-- The transaction rechecks enrollment state/year, enforces at most five saved
-  submissions for the HMAC-hashed IP within a rolling hour, and inserts Pending.
-  Database locks make the limit shared across API instances. Raw IPs are not saved.
-- The browser keeps one random submission ID in memory. Retrying an identical
-  submission returns its existing reference without using another quota slot.
-  Conflicting data under that ID is rejected. Do not reload after an uncertain
-  network result: complete a fresh CAPTCHA and retry on the same page.
-- Files from known rejected transactions and redundant retries are removed.
-  Ambiguous database/network failures preserve an uploaded file because the insert
-  may have committed. Operations should periodically reconcile old unreferenced
-  bucket objects against `attachment_path`; never delete referenced objects.
-- Application data is not written to localStorage, sessionStorage, URLs, or logs.
-  Refreshing loses the in-memory form. Database rows/files are private; no anonymous
-  listing, reference lookup, or staff functionality is exposed by this feature.
+One database transaction inserts the application, guardian rows, document record,
+and retry receipt. A failure in any related insert rolls back the whole database
+transaction. The active period is locked during submission. A shared database lock
+and rolling count on `submitter_ip_hash`/`submitted_at` enforce at most five saved
+applications from an IP in one hour across API instances.
 
-## Verification and handoff
+The browser retains a random submission ID in memory. An identical retry returns
+the first reference without inserting or consuming another quota slot. The retry
+helper stores only the ID, application foreign key, and a SHA-256 payload hash;
+it does not duplicate applicant details. Consent time is preserved on retries.
+After an uncertain network result, keep the page open and retry with a fresh CAPTCHA.
+
+Known rejected uploads and redundant retry uploads are removed. Ambiguous network
+failures preserve files in case the database committed; reconcile old unreferenced
+objects against `application_documents.storage_path` operationally. No public
+application/document reading endpoint or Storage policy is added. The feature does
+not write applicant data to browser storage, URLs, or logs. Refreshing loses the form.
+Submitting remains an application only; the receipt directs applicants to the
+Registrar's Office for the remaining enrollment steps.
+
+## Verification
 
 Run `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build`.
-Tests exercise both form variants, validation, review/confirmation, errors/retries,
-HTTP handling, CAPTCHA verification, and the SQL migration with local PostgreSQL
-through PGlite. Storage schema/roles are stubbed in that database test; it is not a
-connection to the team's hosted Supabase. HTTP tests inject a store and verifier.
+Database tests execute the exact users/enrollment DDL from the supplied reference
+schema and the PB-12 addition in local PostgreSQL via PGlite. They verify column
+mapping, JHS NULL strand, SHS strand, lowercase status, guardian/document links,
+consent timestamps, transaction rollback, retry behavior, limits, and access grants.
+Unrelated scheduling tables/extensions and hosted Supabase Storage are not exercised.
+Adapter tests verify the open-period query and normalized RPC request. Browser tests
+use synthetic data and simulated services; no real applications are submitted.
 
-Before the shared demo, apply the migration to a test project, configure real
-Turnstile keys, and submit synthetic JHS/SHS applications from the browser. Confirm
-the matching Pending records and private attachments in Supabase. Check a closed
-period and the sixth submission from the same IP. Hosted integration is a separate
-check and must not be inferred from the local tests.
-
-Provider references: [Turnstile server-side verification](https://developers.cloudflare.com/turnstile/get-started/server-side-validation/)
-and [Supabase database functions](https://supabase.com/docs/guides/database/functions).
+Hosted verification still requires the team's configuration and applying the
+additive migration. Submit synthetic JHS and SHS records, inspect all three tables
+and the private document, then check closed enrollment and the sixth same-IP request.

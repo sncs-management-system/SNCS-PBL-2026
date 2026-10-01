@@ -4,9 +4,9 @@ import { createHash, createHmac, randomUUID } from 'node:crypto';
 import ipaddr from 'ipaddr.js';
 import { attachmentError, maxAttachmentBytes, validateApplication, type Application } from '../src/lib/enrollment/form';
 
-export type Period = { status: 'open' | 'closed'; schoolYear: string };
+export type Period = { status: 'open' | 'closed'; schoolYear: string; periodId: string | null };
 export type Receipt = { reference: string; created: boolean };
-export type SaveInput = { submissionId: string; ipHash: string; data: Application; attachment: { name: string; type: string; size: number; sha256: string } | null; attachmentPath: string | null };
+export type SaveInput = { submissionId: string; periodId: string; ipHash: string; data: Application; attachment: { name: string; type: string; size: number; sha256: string } | null; attachmentPath: string | null };
 export interface EnrollmentStore {
   period(): Promise<Period>;
   upload(path: string, buffer: Buffer, type: string): Promise<void>;
@@ -35,11 +35,16 @@ export function createApp(store: EnrollmentStore, verifyCaptcha: (token: string,
     next();
   }, upload, async (req, res) => {
     const period = await store.period();
-    if (period.status !== 'open') { res.status(403).json({ message: 'Enrollment is currently closed.' }); return; }
+    if (period.status !== 'open' || !period.periodId) { res.status(403).json({ message: 'Enrollment is currently closed.' }); return; }
     let input: unknown;
     try { input = JSON.parse(req.body?.application ?? 'null'); }
     catch { res.status(400).json({ message: 'The application could not be read. Please try again.' }); return; }
     const { data, errors } = validateApplication(input, period.schoolYear);
+    const raw = input && typeof input === 'object' ? input as Record<string, unknown> : {};
+    if (raw.periodId !== period.periodId) {
+      res.status(403).json({ message: 'The enrollment period has changed. Reload the page before submitting.' }); return;
+    }
+    if (raw.privacyConsent !== true) errors.privacyConsent = 'Consent to the collection and use of these details for enrollment is required.';
     const file = req.file;
     if (file) {
       const error = attachmentError({ size: file.size, type: file.mimetype, name: file.originalname });
@@ -63,7 +68,7 @@ export function createApp(store: EnrollmentStore, verifyCaptcha: (token: string,
     let receipt: Receipt;
     try {
       if (file && attachmentPath) await store.upload(attachmentPath, file.buffer, file.mimetype);
-      receipt = await store.save({ submissionId, ipHash: createHmac('sha256', config.ipHashSecret).update(ip).digest('hex'), data, attachment, attachmentPath });
+      receipt = await store.save({ submissionId, periodId: period.periodId, ipHash: createHmac('sha256', config.ipHashSecret).update(ip).digest('hex'), data, attachment, attachmentPath });
     } catch (error) {
       // On known transaction rejections, the file is safe to remove. On ambiguous
       // network failures, preserve it: the transaction may already have committed.

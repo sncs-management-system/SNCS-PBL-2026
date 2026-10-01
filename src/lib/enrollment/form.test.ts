@@ -21,9 +21,10 @@ describe('registration form validation', () => {
     const errors = validateApplication({ ...validApplication, firstName: '', email: 'bad', parentEmail: 'bad', fatherContact: 'abc', contact: '1234' }, '2026-2027').errors;
     expect(Object.keys(errors)).toEqual(expect.arrayContaining(['firstName', 'email', 'parentEmail', 'fatherContact', 'contact']));
   });
-  it('keeps sibling counts produced by numeric form inputs', () => {
-    expect(validateApplication({ ...validApplication, siblings: 0 }, '2026-2027').data.siblings).toBe('0');
-    expect(validateApplication({ ...validApplication, siblings: -1 }, '2026-2027').errors).toHaveProperty('siblings');
+  it('requires the schema-required fields and the full name of any supplied guardian', () => {
+    const result = validateApplication({ ...validApplication, religion: '', messenger: '', fatherOccupation: 'Teacher' }, '2026-2027');
+    expect(Object.keys(result.errors)).toEqual(expect.arrayContaining(['religion', 'messenger', 'fatherFullName']));
+    expect(validateApplication({ ...validApplication, guardianFullName: '', guardianContact: '', previousSchool: '', previousAddress: '' }, '2026-2027').errors).toEqual({});
   });
   it('handles birthdays, leap dates and future dates', () => {
     expect(ageAt('2010-10-02', '2026-10-01')).toBe('15');
@@ -31,9 +32,11 @@ describe('registration form validation', () => {
     expect(ageAt('2013-02-29')).toBe('');
     expect(ageAt('2027-01-01', '2026-10-01')).toBe('');
   });
-  it('includes every source column (guardian siblings and SHS strand included)', () => {
-    expect(sectionsFor({ level: 'JHS' }).flatMap(s => s.fields)).toHaveLength(44);
-    expect(sectionsFor({ level: 'SHS' }).flatMap(s => s.fields)).toHaveLength(45);
+  it('collects only fields supported by the supplied schema plus derived age/year', () => {
+    const keys = sectionsFor({ level: 'JHS' }).flatMap(s => s.fields.map(f => f.key));
+    expect(keys).toHaveLength(29);
+    expect(sectionsFor({ level: 'SHS' }).flatMap(s => s.fields)).toHaveLength(30);
+    for (const key of ['siblings', 'fatherOfficeAddress', 'guardianRelation', 'previousGrade', 'adviser']) expect(keys).not.toContain(key);
   });
   it('limits file size, extension and MIME type', () => {
     expect(attachmentError({ size: maxAttachmentBytes, type: 'application/pdf', name: 'file.pdf' })).toBe('');

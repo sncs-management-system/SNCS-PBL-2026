@@ -8,10 +8,10 @@ describe('enrollment HTTP API', () => {
   const store: EnrollmentStore = { period: vi.fn(), save: vi.fn(), upload: vi.fn(), remove: vi.fn() };
   const verify = vi.fn();
   const app = createApp(store, verify, { siteKey: 'public-key', ipHashSecret: 'a-long-test-secret', allowedOrigin: 'https://school.example' });
-  const post = (data: unknown = validApplication, token = 'valid') => request(app).post('/api/enrollment/applications').field('application', JSON.stringify(data)).field('captchaToken', token).field('submissionId', randomUUID());
+  const post = (data = { ...validApplication, periodId: '1', privacyConsent: true }, token = 'valid') => request(app).post('/api/enrollment/applications').field('application', JSON.stringify(data)).field('captchaToken', token).field('submissionId', randomUUID());
   beforeEach(() => {
     vi.resetAllMocks();
-    vi.mocked(store.period).mockResolvedValue({ status: 'open', schoolYear: '2026-2027' });
+    vi.mocked(store.period).mockResolvedValue({ status: 'open', schoolYear: '2026-2027', periodId: '1' });
     vi.mocked(store.save).mockResolvedValue({ reference: 'SNCS-TEST', created: true });
     vi.mocked(store.upload).mockResolvedValue(undefined);
     vi.mocked(store.remove).mockResolvedValue(undefined);
@@ -19,7 +19,7 @@ describe('enrollment HTTP API', () => {
   });
   it('returns public configuration without credentials', async () => {
     const response = await request(app).get('/api/enrollment/config');
-    expect(response.body).toEqual({ status: 'open', schoolYear: '2026-2027', siteKey: 'public-key' });
+    expect(response.body).toEqual({ status: 'open', schoolYear: '2026-2027', periodId: '1', siteKey: 'public-key' });
     expect(response.headers['cache-control']).toBe('no-store');
   });
   it('persists validated Pending applications and returns only a receipt', async () => {
@@ -30,11 +30,11 @@ describe('enrollment HTTP API', () => {
     expect(response.body.email).toBeUndefined();
   });
   it('blocks closed enrollment before CAPTCHA or persistence', async () => {
-    vi.mocked(store.period).mockResolvedValue({ status: 'closed', schoolYear: '2026-2027' });
+    vi.mocked(store.period).mockResolvedValue({ status: 'closed', schoolYear: '', periodId: null });
     await post().expect(403); expect(verify).not.toHaveBeenCalled(); expect(store.save).not.toHaveBeenCalled();
   });
   it('rejects forged fields and invalid optional files', async () => {
-    const invalid = await post({ ...validApplication, email: 'bad' }).expect(422);
+    const invalid = await post({ ...validApplication, periodId: '1', privacyConsent: true, email: 'bad' }).expect(422);
     expect(invalid.body.errors.email).toBeTruthy();
     await post().attach('attachment', Buffer.from('fake image'), { filename: 'fake.png', contentType: 'image/png' }).expect(422);
     expect(store.save).not.toHaveBeenCalled();
@@ -45,7 +45,7 @@ describe('enrollment HTTP API', () => {
     expect(store.upload).toHaveBeenCalledOnce();
   });
   it('rejects missing, failed and expired CAPTCHA without saving', async () => {
-    await post(validApplication, '').expect(422);
+    await post(undefined, '').expect(422);
     verify.mockResolvedValue(false); await post().expect(422);
     expect(store.save).not.toHaveBeenCalled();
   });
@@ -70,5 +70,11 @@ describe('enrollment HTTP API', () => {
     await post().set('X-Forwarded-For', '203.0.113.99').expect(201);
     expect(verify.mock.calls[0][1]).not.toBe('203.0.113.99');
     await post().set('Origin', 'https://other.example').expect(403);
+  });
+  it('requires explicit privacy consent and rejects stale period IDs before saving', async () => {
+    const result = await post({ ...validApplication, periodId: '1', privacyConsent: false }).expect(422);
+    expect(result.body.errors.privacyConsent).toBeTruthy();
+    await post({ ...validApplication, periodId: '2', privacyConsent: true }).expect(403);
+    expect(store.save).not.toHaveBeenCalled();
   });
 });

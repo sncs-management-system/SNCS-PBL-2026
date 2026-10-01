@@ -4,7 +4,7 @@ import { RouterLink } from 'vue-router';
 import EnrollmentCaptcha from '@/components/EnrollmentCaptcha.vue';
 import { ageAt, attachmentError, sectionsFor, todayInManila, validateApplication, type Application, type FieldErrors } from '@/lib/enrollment/form';
 
-type Config = { status: 'open' | 'closed'; schoolYear: string; siteKey: string };
+type Config = { status: 'open' | 'closed'; schoolYear: string; siteKey: string; periodId: string | null };
 const config = ref<Config>();
 const loading = ref(true);
 const message = ref('');
@@ -17,6 +17,7 @@ const errors = ref<FieldErrors>({});
 const reviewing = ref(false);
 const busy = ref(false);
 const confirmed = ref(false);
+const privacyConsent = ref(false);
 const token = ref('');
 const captcha = ref<InstanceType<typeof EnrollmentCaptcha>>();
 const attachment = ref<File>();
@@ -36,7 +37,7 @@ async function loadConfig() {
     const response = await fetch('/api/enrollment/config', { signal: AbortSignal.timeout(15_000) });
     if (!response.ok) throw new Error();
     const result: Config = await response.json();
-    if (!['open', 'closed'].includes(result.status) || !result.schoolYear || !result.siteKey) throw new Error();
+    if (!['open', 'closed'].includes(result.status) || !result.siteKey || (result.status === 'open' && (!result.schoolYear || !result.periodId))) throw new Error();
     config.value = result;
     data.schoolYear = result.schoolYear;
   } catch { message.value = 'Enrollment is temporarily unavailable. Please try again shortly.'; }
@@ -68,14 +69,15 @@ async function edit() {
   reviewing.value = false;
   token.value = '';
   confirmed.value = false;
+  privacyConsent.value = false;
   await nextTick(); document.querySelector<HTMLElement>('#level')?.focus();
 }
 async function submit() {
-  if (busy.value || !config.value || !confirmed.value) return;
+  if (busy.value || !config.value || !confirmed.value || !privacyConsent.value) return;
   if (!token.value) { errors.value = { captcha: 'Complete the security check before submitting.' }; await focusErrors(); return; }
   busy.value = true; message.value = ''; errors.value = {};
   const body = new FormData();
-  body.append('application', JSON.stringify(data));
+  body.append('application', JSON.stringify({ ...data, periodId: config.value.periodId, privacyConsent: privacyConsent.value }));
   body.append('submissionId', submissionId.value);
   body.append('captchaToken', token.value);
   if (attachment.value) body.append('attachment', attachment.value);
@@ -85,7 +87,7 @@ async function submit() {
     if (!response.ok) {
       message.value = result.message || 'Submission could not be completed. Please try again.';
       errors.value = result.errors ?? {};
-      if (Object.keys(errors.value).some(key => key !== 'captcha')) reviewing.value = false;
+      if (Object.keys(errors.value).some(key => !['captcha', 'privacyConsent'].includes(key))) reviewing.value = false;
       captcha.value?.reset(); token.value = '';
       await focusErrors();
       return;
@@ -172,7 +174,7 @@ async function submit() {
                   <option v-for="option in field.options" :key="option" :value="option">{{ option === 'JHS' ? 'Junior High School' : option === 'SHS' ? 'Senior High School' : option }}</option>
                 </select>
                 <textarea v-else-if="field.type === 'textarea'" :id="field.key" v-model="data[field.key]" :required="field.required" maxlength="1000" rows="2" :aria-invalid="!!errors[field.key]" :aria-describedby="`${field.key}-help`"></textarea>
-                <input v-else :id="field.key" v-model="data[field.key]" :type="field.type ?? 'text'" :required="field.required" :readonly="['age', 'schoolYear'].includes(field.key)" :max="field.type === 'date' ? todayInManila() : field.key === 'siblings' ? 99 : undefined" :min="field.type === 'number' ? 0 : undefined" :maxlength="254" :aria-invalid="!!errors[field.key]" :aria-describedby="`${field.key}-help`" />
+                <input v-else :id="field.key" v-model="data[field.key]" :type="field.type ?? 'text'" :required="field.required" :readonly="['age', 'schoolYear'].includes(field.key)" :max="field.type === 'date' ? todayInManila() : undefined" :min="field.type === 'number' ? 0 : undefined" :maxlength="254" :aria-invalid="!!errors[field.key]" :aria-describedby="`${field.key}-help`" />
                 <small :id="`${field.key}-help`" :class="{ 'field-error': errors[field.key] }">{{ errors[field.key] || field.hint }}</small>
               </div>
             </div>
@@ -194,11 +196,12 @@ async function submit() {
             <dl><template v-for="field in section.fields" :key="field.key"><div><dt>{{ field.label }}</dt><dd>{{ data[field.key] || 'Not provided' }}</dd></div></template></dl>
           </div>
           <p><strong>Supporting document:</strong> {{ attachment?.name || 'None attached' }}</p>
-          <label class="confirmation-check"><input v-model="confirmed" type="checkbox" :disabled="busy" /> I confirm that the details are accurate and understand that I must visit the Registrar’s Office to continue enrollment.</label>
+          <label class="confirmation-check"><input id="confirmation" v-model="confirmed" type="checkbox" :disabled="busy" /> I confirm that the details are accurate and understand that I must visit the Registrar’s Office to continue enrollment.</label>
+          <label class="confirmation-check"><input id="privacyConsent" v-model="privacyConsent" type="checkbox" :disabled="busy" :aria-invalid="!!errors.privacyConsent" /> I consent to Sto. Niño Catholic School collecting and using the personal information and documents I provide to process this enrollment application.</label>
           <div id="captcha" class="captcha-area"><EnrollmentCaptcha ref="captcha" :site-key="config.siteKey" @token="token = $event" /></div>
           <div class="form-actions">
             <button type="button" class="button button-edit" :disabled="busy" @click="edit">← Edit details</button>
-            <button type="submit" class="button button-secondary" :disabled="busy || !confirmed || !token">{{ busy ? 'Submitting…' : 'Submit application' }}</button>
+            <button type="submit" class="button button-secondary" :disabled="busy || !confirmed || !privacyConsent || !token">{{ busy ? 'Submitting…' : 'Submit application' }}</button>
           </div>
           <p v-if="busy" role="status">Please wait while we save your application.</p>
         </template>

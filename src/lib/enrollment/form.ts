@@ -15,12 +15,9 @@ export const strands: Record<string, string[]> = {
   'Grade 12': ['12-STEM', '12-HUMSS', '12-GAS', '12-ABM', '12-ICT'],
 };
 const parentFields = (prefix: string, mother = false): Field[] => [
-  { key: `${prefix}Surname`, label: mother ? 'Maiden surname' : 'Surname' },
-  { key: `${prefix}FirstName`, label: 'First name' },
-  { key: `${prefix}MiddleName`, label: 'Middle name' },
+  { key: `${prefix}FullName`, label: mother ? 'Full maiden name' : 'Full name', hint: 'Required if you provide an occupation or contact number below.' },
   { key: `${prefix}Occupation`, label: 'Occupation' },
   { key: `${prefix}Contact`, label: 'Contact number/s', type: 'tel' },
-  { key: `${prefix}OfficeAddress`, label: 'Office address', type: 'textarea' },
 ];
 export function sectionsFor(data: Application): Section[] {
   return [
@@ -38,29 +35,21 @@ export function sectionsFor(data: Application): Section[] {
       { key: 'middleName', label: 'Middle name' },
       { key: 'email', label: 'Email', type: 'email', required: true },
       { key: 'parentEmail', label: 'Parent’s email address', type: 'email' },
-      { key: 'messenger', label: 'Parent/guardian’s active Messenger account' },
+      { key: 'messenger', label: 'Parent/guardian’s active Messenger account', required: true },
       { key: 'birthday', label: 'Birthday', type: 'date', required: true },
       { key: 'age', label: 'Age', type: 'number', hint: 'Calculated from the birthday.' },
       { key: 'gender', label: 'Gender', type: 'select', required: true, options: ['Male', 'Female'] },
       { key: 'address', label: 'Complete address', type: 'textarea', required: true },
       { key: 'birthplace', label: 'Place of birth', required: true },
-      { key: 'religion', label: 'Religion' },
+      { key: 'religion', label: 'Religion', required: true },
       { key: 'contact', label: 'Contact numbers', type: 'tel', required: true, hint: 'For multiple numbers, separate them with commas.' },
     ] },
     { title: 'Father’s information', description: 'Fill in the details that apply to your family.', fields: parentFields('father') },
-    { title: 'Mother’s information', description: 'Use the mother’s maiden surname.', fields: parentFields('mother', true) },
-    { title: 'Guardian’s information', description: 'Provide a parent or guardian the school can contact.', fields: [
-      ...parentFields('guardian').map(field => ({ ...field, required: ['guardianSurname', 'guardianFirstName', 'guardianContact'].includes(field.key) })),
-      { key: 'guardianRelation', label: 'Relation to the student', required: true },
-      { key: 'siblings', label: 'Number of siblings', type: 'number' },
-    ] },
+    { title: 'Mother’s information', description: 'Use the mother’s full maiden name, if applicable.', fields: parentFields('mother', true) },
+    { title: 'Guardian’s information', description: 'Provide guardian details if applicable.', fields: parentFields('guardian') },
     { title: 'Last school attended', description: 'Enter the details of the student’s previous school.', fields: [
-      { key: 'previousGrade', label: 'Grade level' },
-      { key: 'previousSection', label: 'Section' },
-      { key: 'adviser', label: 'Name of the class adviser' },
-      { key: 'principal', label: 'Name of the school principal' },
-      { key: 'previousSchool', label: 'Former school’s name', required: true },
-      { key: 'previousAddress', label: 'Former school’s complete address', type: 'textarea', required: true },
+      { key: 'previousSchool', label: 'Former school’s name' },
+      { key: 'previousAddress', label: 'Former school’s complete address', type: 'textarea' },
     ] },
   ];
 }
@@ -92,7 +81,11 @@ export function validateApplication(input: unknown, schoolYear: string, today = 
   const age = ageAt(data.birthday, today);
   if (age === '' || Number(age) > 120) errors.birthday = 'Enter a valid birthday that is not in the future.';
   data.age = age;
-  if (data.siblings && (!/^\d+$/.test(data.siblings) || Number(data.siblings) > 99)) errors.siblings = 'Number of siblings must be a whole number from 0 to 99.';
+  for (const relationship of ['father', 'mother', 'guardian']) {
+    if ((data[`${relationship}Occupation`] || data[`${relationship}Contact`]) && !data[`${relationship}FullName`]) {
+      errors[`${relationship}FullName`] = `${relationship[0].toUpperCase()}${relationship.slice(1)}’s full name is required when other details are supplied.`;
+    }
+  }
   if (data.level === 'JHS') data.strand = '';
   return { data, errors };
 }
