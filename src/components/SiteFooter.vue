@@ -16,6 +16,7 @@ const currentYear = new Date().getFullYear();
         <RouterLink to="/about">About SNCS</RouterLink>
         <RouterLink to="/campus">Campus life</RouterLink>
         <RouterLink to="/news">Latest news</RouterLink>
+        <RouterLink to="/enrollment">Apply for enrollment</RouterLink>
       </div>
       <div>
         <p class="footer-heading">Visit</p>

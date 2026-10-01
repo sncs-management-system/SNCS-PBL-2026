@@ -5,6 +5,7 @@ import { RouterLink } from "vue-router";
 const menu = ref<HTMLDetailsElement | null>(null);
 
 const navigation = [
+  { to: "/enrollment", label: "Apply" },
   { to: "/about", label: "About" },
   { to: "/campus", label: "Campus" },
   { to: "/news", label: "News" },
