@@ -1,8 +1,8 @@
-import express, { type ErrorRequestHandler, type Request } from 'express';
+import express, { type ErrorRequestHandler, type Request, type Response, type NextFunction } from 'express';
 import multer from 'multer';
 import { createHash, createHmac, randomUUID } from 'node:crypto';
 import ipaddr from 'ipaddr.js';
-import { attachmentError, maxAttachmentBytes, validateApplication, type Application } from '../src/lib/enrollment/form';
+import { attachmentError, maxAttachmentBytes, validateApplication, type Application } from '../src/lib/enrollment/form.js';
 
 export type Period = { status: 'open' | 'closed'; schoolYear: string; periodId: string | null };
 export type Receipt = { reference: string; created: boolean };
@@ -22,18 +22,18 @@ export function createApp(store: EnrollmentStore, verifyCaptcha: (token: string,
   app.disable('x-powered-by');
   // Only named, trusted proxy addresses may supply a forwarded client address.
   app.set('trust proxy', config.trustProxy ?? false);
-  app.use('/api', (_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
+  app.use('/api', (_req: Request, res: Response, next: NextFunction) => { res.set('Cache-Control', 'no-store'); next(); });
   const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: maxAttachmentBytes, files: 1, fields: 3, fieldSize: 32 * 1024, parts: 4 } }).single('attachment');
-  app.get('/api/enrollment/config', async (_req, res) => {
+  app.get('/api/enrollment/config', async (_req: Request, res: Response) => {
     const period = await store.period();
     res.json({ ...period, siteKey: config.siteKey });
   });
-  app.post('/api/enrollment/applications', (req, res, next) => {
+  app.post('/api/enrollment/applications', (req: Request, res: Response, next: NextFunction) => {
     if (req.get('origin') && req.get('origin') !== config.allowedOrigin) {
       res.status(403).json({ message: 'Submission is not allowed from this site.' }); return;
     }
     next();
-  }, upload, async (req, res) => {
+  }, upload, async (req: Request, res: Response) => {
     const period = await store.period();
     if (period.status !== 'open' || !period.periodId) { res.status(403).json({ message: 'Enrollment is currently closed.' }); return; }
     let input: unknown;
@@ -86,7 +86,7 @@ export function createApp(store: EnrollmentStore, verifyCaptcha: (token: string,
   });
   // Express identifies error middleware by its four-argument signature.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleError: ErrorRequestHandler = (error, _req, res, _next) => {
+  const handleError: ErrorRequestHandler = (error: unknown, _req: Request, res: Response, _next: NextFunction) => {
     if (error instanceof multer.MulterError) {
       res.status(422).json({ message: 'Please check the supporting document.', errors: { attachment: error.code === 'LIMIT_FILE_SIZE' ? 'Supporting document must be 4 MB or smaller.' : 'Upload only one PDF, JPG, or PNG file, up to 4 MB.' } }); return;
     }

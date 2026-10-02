@@ -7,11 +7,12 @@
     "dev": "vite",
     "dev:server": "tsx watch --env-file=.env server/index.ts",
     "start": "tsx --env-file=.env server/index.ts",
-    "build": "vue-tsc --noEmit && vite build",
+    "build": "vue-tsc --noEmit && tsc --project api/tsconfig.json --noEmit && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
-    "typecheck": "vue-tsc --noEmit",
-    "test": "vitest run src server"
+    "typecheck": "vue-tsc --noEmit && tsc --project api/tsconfig.json --noEmit",
+    "test": "vitest run src server",
+    "test:runtime": "node scripts/check-enrollment-runtime.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.2",

@@ -91,6 +91,11 @@ The Vercel adapter uses the platform-controlled `x-vercel-forwarded-for` address
 for CAPTCHA and rate limiting. It never trusts a browser-provided Host header
 to authorize a site, and it fails safely if the platform client IP is unavailable.
 Function initialization is lazy, so a build does not require secrets to be present.
+The API uses its own NodeNext TypeScript configuration and explicit `.js` relative
+imports so compiled functions can load in Node's native ES module runtime. The
+website build checks both frontend and server types. `pnpm test:runtime` compiles
+the actual API entries, imports them in native Node, and checks safe startup and
+configuration retrieval with synthetic credentials and a simulated Supabase response.
 
 ## Field-to-column mapping
 
@@ -173,7 +178,7 @@ Registrar's Office for the remaining enrollment steps.
 
 ## Verification
 
-Run `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build`.
+Run `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:runtime`, and `pnpm build`.
 Database tests execute the exact users/enrollment DDL from the supplied reference
 schema and the PB-12 addition in local PostgreSQL via PGlite. They verify column
 mapping, JHS NULL strand, SHS strand, lowercase status, guardian/document links,

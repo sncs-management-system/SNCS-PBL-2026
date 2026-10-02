@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { ConfigurationError, configuredApp } from './runtime';
+import { ConfigurationError, configuredApp } from './runtime.js';
 
 export function createVercelHandler() {
   let app: ReturnType<typeof configuredApp> | undefined;

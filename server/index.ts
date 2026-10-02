@@ -1,6 +1,6 @@
 import { resolve } from 'node:path';
 import express from 'express';
-import { configuredApp } from './runtime';
+import { configuredApp } from './runtime.js';
 
 const app = configuredApp();
 if (process.env.NODE_ENV === 'production') {

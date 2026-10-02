@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
-import { SubmissionError, type EnrollmentStore } from './app';
-import { mapEnrollment } from './enrollment-mapping';
+import { SubmissionError, type EnrollmentStore } from './app.js';
+import { mapEnrollment } from './enrollment-mapping.js';
 
 export function supabaseStore(url: string, serviceKey: string): EnrollmentStore {
   const db = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });

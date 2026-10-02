@@ -1,8 +1,8 @@
 import type { Request } from 'express';
 import ipaddr from 'ipaddr.js';
-import { createApp } from './app';
-import { supabaseStore } from './supabase';
-import { verifyTurnstile } from './turnstile';
+import { createApp } from './app.js';
+import { supabaseStore } from './supabase.js';
+import { verifyTurnstile } from './turnstile.js';
 
 export class ConfigurationError extends Error {}
 
