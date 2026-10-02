@@ -36,6 +36,17 @@ trailing slash, and match TURNSTILE_HOSTNAME. For Jan's preview:
 TURNSTILE_HOSTNAME=sncs-pbl-2026-git-enrollment-application-jans-projects-244b4656.vercel.app
 APP_ORIGIN=https://sncs-pbl-2026-git-enrollment-application-jans-projects-244b4656.vercel.app
 
+Use this stable branch hostname for enrollment testing and register it on the
+matching Cloudflare Turnstile widget. Vercel also generates a separate URL for
+each deployment; those URLs are not needed for this workflow. The server accepts
+only the configured origin and Turnstile hostname.
+
+The security check displays loading, waiting, completion and failure states.
+It waits for the Turnstile API to be ready, makes stalled loading retryable,
+and clears old widget callbacks when leaving review or retrying. A domain
+rejection explains that the widget is not configured for the current website.
+Submission always requires a verified token, including after retries.
+
 The existing active enrollment_periods row supplies its ID and school year.
 No open row means enrollment is closed. PB-12 does not open or create a period.
 
