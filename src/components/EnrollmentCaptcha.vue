@@ -2,12 +2,15 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 
 type Turnstile = {
-  ready: (callback: () => void) => void;
   render: (element: HTMLElement, options: Record<string, unknown>) => string;
   reset: (id: string) => void;
   remove: (id: string) => void;
 };
-declare global { interface Window { turnstile?: Turnstile } }
+declare global { interface Window {
+  turnstile?: Turnstile;
+  onEnrollmentTurnstileLoad?: () => void;
+  enrollmentTurnstileReady?: boolean;
+} }
 const props = defineProps<{ siteKey: string }>();
 const emit = defineEmits<{ token: [value: string] }>();
 const container = ref<HTMLElement>();
@@ -36,27 +39,22 @@ function fail(code?: string) {
 
 function renderWidget() {
   const currentAttempt = attempt;
-  if (!mounted || !window.turnstile) return;
+  if (!mounted || !window.turnstile || !container.value || widget !== undefined) return;
+  clearTimeoutAndListeners();
+  status.value = 'verifying';
+  // Stop a stalled or invisible challenge from leaving an unexplained blank area.
+  timeout = setTimeout(() => fail(), 60_000);
   try {
-    window.turnstile.ready(() => {
-      if (!mounted || currentAttempt !== attempt || !container.value || widget !== undefined) return;
-      clearTimeoutAndListeners();
-      status.value = 'verifying';
-      // Stop a stalled or invisible challenge from leaving an unexplained blank area.
-      timeout = setTimeout(() => fail(), 60_000);
-      try {
-        widget = window.turnstile!.render(container.value, {
-          sitekey: props.siteKey, action: 'enrollment', theme: 'light', size: 'flexible', appearance: 'always',
-          callback: (token: string) => {
-            if (!mounted || currentAttempt !== attempt) return;
-            clearTimeoutAndListeners(); status.value = 'verified'; emit('token', token);
-          },
-          'before-interactive-callback': () => { if (currentAttempt === attempt) clearTimeout(timeout); },
-          'expired-callback': () => { if (mounted && currentAttempt === attempt) fail(); },
-          'timeout-callback': () => { if (mounted && currentAttempt === attempt) fail(); },
-          'error-callback': (code: string) => { if (currentAttempt === attempt) fail(code); },
-        });
-      } catch { fail(); }
+    widget = window.turnstile.render(container.value, {
+      sitekey: props.siteKey, action: 'enrollment', theme: 'light', size: 'flexible', appearance: 'always',
+      callback: (token: string) => {
+        if (!mounted || currentAttempt !== attempt) return;
+        clearTimeoutAndListeners(); status.value = 'verified'; emit('token', token);
+      },
+      'before-interactive-callback': () => { if (currentAttempt === attempt) clearTimeout(timeout); },
+      'expired-callback': () => { if (mounted && currentAttempt === attempt) fail(); },
+      'timeout-callback': () => { if (mounted && currentAttempt === attempt) fail(); },
+      'error-callback': (code: string) => { if (currentAttempt === attempt) fail(code); },
     });
   } catch { fail(); }
 }
@@ -67,19 +65,24 @@ function load() {
   failureMessage.value = '';
   emit('token', '');
   timeout = setTimeout(() => fail(), 20_000);
-  if (window.turnstile) { renderWidget(); return; }
+  if (window.turnstile && window.enrollmentTurnstileReady) { renderWidget(); return; }
+  // The explicit-rendering script invokes this only when its API is initialized.
+  window.onEnrollmentTurnstileLoad = () => {
+    window.enrollmentTurnstileReady = true;
+    document.dispatchEvent(new Event('enrollment-turnstile-ready'));
+  };
   let script = document.querySelector<HTMLScriptElement>('#enrollment-turnstile');
   const created = !script;
   if (!script) {
     script = document.createElement('script');
     script.id = 'enrollment-turnstile';
-    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=onEnrollmentTurnstileLoad';
     script.async = true;
     script.defer = true;
   }
   const onError = () => { script.remove(); fail(); };
-  removeListeners = () => { script.removeEventListener('load', renderWidget); script.removeEventListener('error', onError); };
-  script.addEventListener('load', renderWidget, { once: true });
+  removeListeners = () => { document.removeEventListener('enrollment-turnstile-ready', renderWidget); script.removeEventListener('error', onError); };
+  document.addEventListener('enrollment-turnstile-ready', renderWidget, { once: true });
   script.addEventListener('error', onError, { once: true });
   if (created) document.head.appendChild(script);
 }
@@ -89,7 +92,7 @@ function reset() {
   if (widget !== undefined) window.turnstile?.remove(widget);
   widget = undefined;
   // Retry a script request which never completed, instead of waiting on it forever.
-  if (!window.turnstile) document.querySelector('#enrollment-turnstile')?.remove();
+  if (!window.enrollmentTurnstileReady) document.querySelector('#enrollment-turnstile')?.remove();
   load();
 }
 onMounted(load);

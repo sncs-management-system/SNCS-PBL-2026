@@ -7,12 +7,13 @@ let wrapper: VueWrapper | undefined;
 let options: Record<string, unknown>;
 const render = vi.fn((_element: HTMLElement, config: Record<string, unknown>) => { options = config; return 'widget'; });
 const remove = vi.fn();
-function installApi(ready = (callback: () => void) => callback()) {
-  window.turnstile = { ready, render, remove, reset: vi.fn() };
+function installApi(initialized = true) {
+  window.turnstile = { render, remove, reset: vi.fn() };
+  window.enrollmentTurnstileReady = initialized;
 }
 function mountCaptcha() { wrapper = mount(EnrollmentCaptcha, { attachTo: document.body, props: { siteKey: 'test-site-key' } }); return wrapper; }
-beforeEach(() => { vi.useFakeTimers(); vi.clearAllMocks(); delete window.turnstile; });
-afterEach(() => { wrapper?.unmount(); wrapper = undefined; document.querySelector('#enrollment-turnstile')?.remove(); delete window.turnstile; vi.useRealTimers(); });
+beforeEach(() => { vi.useFakeTimers(); vi.clearAllMocks(); delete window.turnstile; delete window.enrollmentTurnstileReady; delete window.onEnrollmentTurnstileLoad; });
+afterEach(() => { wrapper?.unmount(); wrapper = undefined; document.querySelector('#enrollment-turnstile')?.remove(); delete window.turnstile; delete window.enrollmentTurnstileReady; delete window.onEnrollmentTurnstileLoad; vi.useRealTimers(); });
 
 it('shows loading feedback and lets a stalled script request be replaced on retry', async () => {
   const view = mountCaptcha();
@@ -24,7 +25,7 @@ it('shows loading feedback and lets a stalled script request be replaced on retr
   expect(document.querySelector('#enrollment-turnstile')).not.toBe(originalScript);
   expect(view.text()).toContain('Loading security check');
   installApi();
-  document.querySelector('#enrollment-turnstile')!.dispatchEvent(new Event('load'));
+  window.onEnrollmentTurnstileLoad!();
   expect(render).toHaveBeenCalledTimes(1);
 });
 it('reports a blocked script without leaving an empty security check area', async () => {
@@ -35,12 +36,14 @@ it('reports a blocked script without leaving an empty security check area', asyn
   expect(document.querySelector('#enrollment-turnstile')).toBeNull();
   expect(view.emitted('token')?.at(-1)).toEqual(['']);
 });
-it('waits for the API to be ready and reports success without exposing the token', async () => {
-  let readyCallback: () => void = () => {};
-  installApi(callback => { readyCallback = callback; });
+it('waits for the explicit script callback and reports success without exposing the token', async () => {
+  installApi(false);
   const view = mountCaptcha();
   expect(render).not.toHaveBeenCalled();
-  readyCallback();
+  expect(document.querySelector('#enrollment-turnstile')!.getAttribute('src')).toContain('onload=onEnrollmentTurnstileLoad');
+  document.querySelector('#enrollment-turnstile')!.dispatchEvent(new Event('load'));
+  expect(render).not.toHaveBeenCalled();
+  window.onEnrollmentTurnstileLoad!();
   expect(options.appearance).toBe('always');
   (options.callback as (token: string) => void)('private-test-token');
   await view.vm.$nextTick();
@@ -86,6 +89,7 @@ it('removes pending listeners so reopening review does not render an abandoned w
   wrapper!.unmount(); wrapper = undefined;
   installApi(); mountCaptcha();
   script.dispatchEvent(new Event('load'));
+  window.onEnrollmentTurnstileLoad!();
   expect(render).toHaveBeenCalledTimes(1);
   expect(vi.getTimerCount()).toBe(1);
 });
