@@ -10,6 +10,7 @@ const navigation = [
   { to: "/news", label: "News" },
   { to: "/events", label: "Events" },
   { to: "/admissions", label: "Admissions" },
+  { to: "/resources", label: "Resources" },
   { to: "/contact", label: "Contact" },
 ];
 

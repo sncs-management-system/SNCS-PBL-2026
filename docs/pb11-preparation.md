@@ -1,134 +1,99 @@
-# PB-11 implementation preparation
+# PB-11: TLC PDF downloads
 
-Reviewed 2 October 2026. PB-10 comes first. This document does not apply database
-changes, upload files, create a Resources route, or publish reference forms.
-Alumni is unrelated to this work and remains untouched.
+Implemented on 2 October 2026 on `feat/pb11-resource-downloads`, based on PB-10
+commit `39daca5`. PB-12 enrollment, staff CMS screens and Alumni are outside this change.
 
-## Acceptance criteria and smallest useful scope
+## Public experience
 
-US-03 requires categorized resources; only public, published records; title,
-category, and file size for every item; and a click that starts a PDF download.
-Start with the verified TLC Forms category. Admission Forms and DepEd References
-in the backlog are examples, not a requirement to invent additional documents.
-US-04 PDF preview is post-MVP. Staff upload/edit/publish/archive belongs to PB-01.
+`/resources` reads live Supabase records and groups them by category. Every item
+shows its title, category, PDF format and measured file size, followed by Download
+PDF. Navigation and the footer link directly to Resources; Admissions links to
+Download TLC forms. Desktop: Resources → Download (two clicks). Phone: Menu →
+Resources → Download (three taps, with scrolling where needed).
 
-## Official source inventory
+The page includes loading, empty, listing failure/retry, and individual download
+failure/retry states with a Registrar contact link. No category selection, sign-in,
+Drive viewer or preview modal is required. US-04 preview remains post-MVP.
 
-The website contains two different TLC pages:
+## Published originals
 
-- Main navigation: <https://www.sncstaguig.com/tlc-forms> lists three PDFs, but
-  all three linked Drive destinations returned “file not found” during review.
-- Registration page: <https://www.sncstaguig.com/registration/tlc-forms> links
-  two accessible PDFs. These exact originals are saved under reference-site/forms.
-  This page explicitly labels the Grade 7 application for SY 2026–2027.
-
-| Proposed display title | Saved original | Bytes / display size | Review |
+| Title | Storage path in resource-files | Bytes | Display |
 | --- | --- | --- | --- |
-| TLC Grade 7 Application Form | grade-7-tlc-application-2026.pdf | 3,922,034 / 3.92 MB | Two scanned pages; filename contains 2026. Source page gives the school year. |
-| TLC Junior High School Transfer Form | tlc-scholar-transfer-form.pdf | 5,082,223 / 5.08 MB | One page; printed title is TLC Scholar Transfer Form, footer says Junior High School Transfer Form. |
-| TLC Scholar SHS Withdrawal Form | No accessible original | Unknown | Listed only on main TLC page; do not invent a file or size. |
+| TLC Grade 7 Application Form (SY 2026–2027) | grade-7-tlc-application-2026.pdf | 3,922,034 | 3.92 MB |
+| TLC Scholar Transfer Form | tlc-scholar-transfer-form.pdf | 5,082,223 | 5.08 MB |
 
-Both downloaded originals are blank print forms, without interactive AcroForm
-fields. All three downloaded pages were visually reviewed. Preserve originals;
-the public website downloads them rather than reimplementing their applicant
-questions. The transfer document includes an SHS-related checkbox despite its
-JHS footer; have the moderator confirm the intended label and audience. Do not
-infer its school year from a Drive modification timestamp.
+Both originals came from the school's accessible registration TLC page:
+<https://www.sncstaguig.com/registration/tlc-forms>. All three pages were visually
+reviewed as blank print forms. The transfer title follows the printed title,
+without assuming a school year or restricting its audience from the JHS footer.
+The unavailable SHS withdrawal form remains excluded. The two versions currently
+accessible from the registration page were selected for this implementation;
+the broken links on the other TLC page remain documented in the manifest.
 
-The machine-readable [manifest](reference-site/resources-manifest.json) records
-original URLs, local paths, sizes, page counts, checksums, and private/draft
-publication defaults. The source mismatch is a version-selection question for
-the moderator. Obtaining an accessible PDF does not prove it replaces the broken
-file on the other page. The two reference files are below the backlog's 10 MB
-upload cap. They are not bundled in the production public directory.
+Originals and provenance are in `docs/reference-site/forms` and
+`docs/reference-site/resources-manifest.json`. The PDFs are served from Supabase,
+not bundled in the Vite public directory. Uploaded and browser-downloaded bytes
+match the original SHA-256 checksums.
 
-## Data and Supabase plan
+## Applied database setup
 
-Observed resources columns:
+Project: `ddjfwiaifkpmlnyrsxnx`. The visibility field, SELECT policy, column grants
+and bucket configuration already existed when implementation resumed. Their
+observed state is preserved in the repeatable migration:
+`supabase/migrations/202610020001_pb11_public_resources.sql`.
 
-```text
-id, title, category, storage_path, file_size_bytes, status, uploaded_by, updated_at
+- RLS stays enabled. SELECT requires both published status and public visibility.
+- Anonymous/authenticated listing grants expose only id, title, category,
+  storage_path, file_size_bytes, status and visibility. Audit columns and wildcard
+  reads are denied. No public write or Storage upload policy was added.
+- The existing public resource-files bucket permits application/pdf up to
+  10,485,760 bytes (10 MiB, displayed as 10 MB in Supabase).
+- No app users existed. uploaded_by now permits NULL for initial authenticated
+  dashboard imports, retaining its users foreign key. These two records have
+  NULL attribution; future CMS uploads must set the actual staff ID. No fake
+  staff account or password was created. CMS permissions require a later migration.
+
+After verifying public file hashes, `supabase/seed-pb11.sql` created resource IDs
+1 and 2, both public/published. The seed skips existing matching paths rather than
+rewriting records. The migration and seed were applied in the authenticated SQL
+Editor. The SQL fixtures in `supabase/tests/pb11-resource-rls.sql` verified public
+published visibility and draft/private/archived exclusion; ROLLBACK removed all
+fixture rows. Sequence gaps after rollback are normal.
+
+Public bucket URLs remain accessible when a listing is archived or made private.
+Keep restricted/draft/application documents in private storage. Changing a
+resource row's visibility does not revoke a previously known public file URL.
+
+## Adapter and download handling
+
+The lazy Resources route loads the Supabase client only when needed, using the
+existing public VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY configuration.
+This client does not persist or reuse a staff authentication session. The adapter
+selects only listing columns, filters public/published rows, validates metadata,
+and rejects unsafe/non-PDF storage paths. It does not invent fallback records.
+
+Downloads fetch the public file into a bounded Blob, check expected byte size and
+PDF signature, then use a temporary same-origin object URL with a useful filename.
+This avoids relying on a cross-origin anchor's download attribute. Requests have
+timeouts and abort on navigation; URLs are revoked after the browser consumes them.
+Only one PDF download is prepared at a time.
+
+## Verification
+
+See `docs/verification/pb11-verification.md`. Run:
+
+```sh
+pnpm lint
+pnpm build
+pnpm test
+pnpm check:resources
 ```
 
-1. Add a constrained public/private visibility field, default private, through a
-   reviewed migration. Keep existing status semantics and check actual values
-   before adding constraints to an existing table.
-2. Keep RLS enabled. Anonymous SELECT must require both published status and
-   public visibility. Give the browser access only to listing fields; do not
-   grant anonymous insert/update/delete or expose uploaded_by/audit data.
-3. Use the existing resource-files public bucket only for approved public PDFs.
-   Drafts/restricted files and enrollment uploads need private storage. Public
-   file URLs bypass table-row filtering; archiving a row hides the listing but
-   does not revoke a previously known public URL. If revocation is required,
-   use private storage and authorized downloads instead.
-4. Agree with the CMS implementer on PDF validation and a 10 MB upload cap.
-   Reject non-PDF uploads in the future trusted upload flow; bucket limits/MIME
-   settings supplement validation. No service-role key belongs in Vue/Vercel
-   VITE variables.
-5. After version confirmation, upload each original under a stable path such as
-   tlc/grade-7-application/2026-2027.pdf and tlc/jhs-transfer/current.pdf. Create
-   a matching resource record with its measured bytes; confirm file availability
-   before changing the record to public/published. Neither upload has occurred.
-   The transfer path's "current" label must reflect the confirmed selected file.
+`check:resources` is read-only, reads public configuration from ignored .env.local,
+checks the two real anonymous records/files and audit-column restrictions, and never
+prints keys. It currently expects this demo's two published TLC originals.
 
-Related setup: [Supabase setup notes](supabase-setup.md).
-
-## Frontend design and adapter
-
-Add a Resource model and a single adapter alongside src/lib/content. Map the
-database's snake_case fields to the frontend model in that adapter. Views use
-typed public resource results. Query only id,title,category,storage_path,
-file_size_bytes,status,visibility and apply public/published filters; RLS must
-enforce the same boundary independently.
-
-Add /resources and one direct main-navigation link after the page is functional.
-Group the default listing by category and show every approved item immediately:
-title, TLC Forms, PDF, formatted byte size, and Download PDF. Use stacked cards
-on phones and compact rows on desktop. No required category click, preview
-modal, login, or Drive viewer intermediary. This preserves desktop two-click
-and mobile three-tap download paths (Menu → Resources → Download PDF).
-
-Use loading placeholders, a polite empty state, and a visible error/retry state.
-Do not fall back to fake published resources when the API fails. For a failed
-download, retain the user's context and display a retry action plus Registrar
-contact. Keep the unavailable withdrawal preparation record out of public data.
-
-## Download behavior
-
-Supabase supports a download query on a public object URL; the URL must be built
-from the known bucket/path and a safely encoded filename. Use the Supabase
-client public-URL download option or the documented Storage download query,
-then verify Content-Disposition and the actual browser result. A cross-origin
-anchor's download attribute alone is insufficient, and opening Drive's PDF
-viewer does not satisfy the requirement that clicking starts a download.
-
-Verify in the real deployment: click Download PDF, a PDF is saved with a useful
-filename, its size/content match the record, and it is readable. If the storage
-response does not enforce download reliably in supported browsers, fetch an
-approved public PDF as a Blob with a temporary same-origin object URL, handle
-HTTP/CORS failures, and revoke it after starting the download. Avoid unbounded
-memory use; the planned PDFs are individually below 10 MB.
-
-Official documentation:
-[public URL/download option](https://supabase.com/docs/reference/javascript/storage-from-getpublicurl),
-[Storage public downloads](https://supabase.com/docs/guides/storage/serving/downloads),
+Official references:
+[Storage public URLs](https://supabase.com/docs/reference/javascript/storage-from-getpublicurl),
+[column grants](https://supabase.com/docs/guides/database/postgres/column-level-security),
 [row-level security](https://supabase.com/docs/guides/database/postgres/row-level-security).
-
-## PB-11 completion checks for the implementation session
-
-- Anonymous browser and direct REST reads expose public/published records only.
-  Include public draft, private published, and archived fixtures when testing;
-  verify excluded records are not returned, not merely hidden in the UI.
-- Each public PDF has correct title, category, measured size, and storage path.
-  Files are retrievable without CMS login.
-- Category grouping works with TLC Forms alone; no empty invented categories.
-- Desktop and phone click paths stay within the agreed budget; keyboard users
-  can navigate and download with meaningful focus/labels.
-- Each download saves the intended PDF instead of navigating to a viewer.
-- Empty/API error/download failure states work, and refresh /resources works
-  on Vercel with the approved SPA rewrite.
-- Existing PB-10 content/selector behavior stays intact; Alumni stays untouched.
-
-Pending client inputs are limited to selecting the intended two TLC versions,
-confirming the transfer audience/title, and supplying the SHS withdrawal PDF if
-it remains in scope. The rest of the preparation can proceed without that file.

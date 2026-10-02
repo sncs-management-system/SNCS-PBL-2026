@@ -34,7 +34,7 @@ const selected = computed(() => groups.find((group) => group.id === selectedId.v
   <section class="section section-soft">
     <div class="container admissions-next">
       <div><p class="eyebrow">TLC applicants</p><h2>Scholarship guidance</h2><p>Ask the Registrar about TLC requirements and the forms that apply to your child. Scholarship eligibility and enrollment steps should be confirmed before submitting documents.</p></div>
-      <RouterLink class="button button-secondary" to="/contact#registrar">Ask about TLC</RouterLink>
+      <div class="resource-actions"><RouterLink class="button button-secondary" to="/resources">Download TLC forms</RouterLink><RouterLink class="text-link" to="/contact#registrar">Ask about TLC →</RouterLink></div>
     </div>
   </section>
 </template>

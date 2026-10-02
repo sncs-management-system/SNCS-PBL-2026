@@ -25,6 +25,7 @@ const router = createRouter({
     { path: "/events", name: "events", component: EventsView, meta: { title: "Events" } },
     { path: "/contact", name: "contact", component: ContactView, meta: { title: "Contact" } },
     { path: "/admissions", name: "admissions", component: AdmissionsView, meta: { title: "Admissions" } },
+    { path: "/resources", name: "resources", component: () => import("@/views/ResourcesView.vue"), meta: { title: "Resources" } },
     { path: "/:pathMatch(.*)*", name: "not-found", component: NotFoundView, meta: { title: "Page not found" } },
   ],
 });

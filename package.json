@@ -10,9 +10,11 @@
     "check:supabase": "node scripts/check-supabase.mjs",
     "lint": "eslint .",
     "typecheck": "vue-tsc --noEmit",
-    "test": "vitest run src"
+    "test": "vitest run src",
+    "check:resources": "node scripts/verify-resources.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.117.2",
     "vue": "^3.5.0",
     "vue-router": "^4.5.0"
   },

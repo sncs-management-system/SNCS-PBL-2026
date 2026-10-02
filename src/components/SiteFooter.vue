@@ -20,6 +20,7 @@ const schoolInformation = getPublicSchoolContactInformation();
         <RouterLink to="/news">Latest news</RouterLink>
         <RouterLink to="/events">School events</RouterLink>
         <RouterLink to="/admissions">Admissions guidance</RouterLink>
+        <RouterLink to="/resources">Forms & downloads</RouterLink>
       </div>
       <div>
         <p class="footer-heading">Visit</p>

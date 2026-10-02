@@ -1,8 +1,8 @@
 # SNCS Management System
 
 This repository contains the Sto. Niño Catholic School (SNCS) management-system
-project. The current Sprint 1 scope is **PB-10: Public Website Content**, delivered
-as a responsive Vue.js single-page application.
+project. This branch implements **PB-10: Public Website Content** and
+**PB-11: Public Resource Downloads** as a responsive Vue.js single-page application.
 
 ## Technology alignment
 
@@ -10,12 +10,12 @@ The project follows the architecture proposed in the SSYSADD1 paper:
 
 - **Frontend:** Vue 3, Vue Router, TypeScript, and Vite
 - **Backend (future backlog):** Node.js with Express
-- **Data and files (future backlog):** Supabase PostgreSQL and Storage
+- **Resource data and files:** Supabase PostgreSQL and Storage
 - **Authentication (future backlog):** Express-managed authentication and sessions
 - **Scheduling (future backlog):** a separate Python service using Google OR-Tools
 
-Only the public frontend is implemented in this branch. Backend, authentication,
-database, CMS, and scheduling work remain outside PB-10.
+The public frontend and Supabase resource reads/downloads are implemented.
+Backend, staff authentication/CMS, enrollment and scheduling remain future work.
 
 ## PB-10 public website
 
@@ -58,10 +58,13 @@ Vercel and local environment configuration use `VITE_SUPABASE_URL` and
 `VITE_SUPABASE_PUBLISHABLE_KEY`. Copy `.env.example` to `.env.local` for a new
 checkout and use the Supabase project's public configuration values.
 
-Run `pnpm check:supabase` to check API/key connectivity without reading records
-or modifying data. The frontend resource adapter and RLS read policy are still
-pending. See [the setup notes](docs/supabase-setup.md) for current project links,
-schema observations, and the PB-11 checklist.
+Run `pnpm check:supabase` for API/key connectivity, or `pnpm check:resources` for
+read-only checks of the two published TLC records, original PDF hashes and
+anonymous column restrictions. `/resources` groups live public/published PDFs
+and starts downloads in two desktop clicks or three phone taps from Home.
+See [the setup notes](docs/supabase-setup.md) and
+[PB-11 implementation notes](docs/pb11-preparation.md) for applied migration,
+seed and verification details.
 
 ## Content integration boundary
 
@@ -69,8 +72,8 @@ The implemented content batch follows the
 [PB-10 content and design plan](docs/pb10-content-design-plan.md), with sources,
 page layouts, CMS mapping, and a three-click task checklist. Local checks and
 screenshots are recorded in [PB-10 verification](docs/verification/pb10-verification.md). See
-[PB-11 preparation](docs/pb11-preparation.md) for the verified TLC reference PDFs
-and pending download implementation. Alumni remains on hold pending the client
+[PB-11 implementation](docs/pb11-preparation.md) for the two published TLC PDFs
+and download verification. Alumni remains on hold pending the client
 decision; its existing markup and assets are unchanged.
 
 Temporary content lives under `src/lib/content`. Components consume typed selector
@@ -78,8 +81,9 @@ functions rather than importing raw records directly. The future CMS adapter can
 replace this data source while preserving the page components and enforcing the
 same `published` and `public` visibility contract. This frontend filter is not a
 database access policy: a future backend must return only public records and
-enforce authorization before sending data to the browser. CMS editing screens,
-Supabase content reads, downloads, and enrollment submission are still pending.
+enforce authorization before sending data to the browser. Resource reads already
+use RLS and limited column grants. CMS editing screens, other Supabase content
+adapters, and enrollment submission remain pending.
 
 ## Asset note
 
