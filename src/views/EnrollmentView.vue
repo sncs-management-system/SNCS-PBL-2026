@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import EnrollmentCaptcha from '@/components/EnrollmentCaptcha.vue';
-import { ageAt, attachmentError, sectionsFor, todayInManila, validateApplication, type Application, type FieldErrors } from '@/lib/enrollment/form';
+import { ageAt, attachmentError, schoolLevels, sectionsFor, todayInManila, validateApplication, type Application, type FieldErrors } from '@/lib/enrollment/form';
 
 type Config = { status: 'open' | 'closed'; schoolYear: string; siteKey: string; periodId: string | null };
 const config = ref<Config>();
@@ -108,7 +108,7 @@ async function submit() {
 <template>
   <section class="enrollment-hero">
     <div class="container">
-      <p class="eyebrow">Admissions · Junior & Senior High School</p>
+      <p class="eyebrow">Admissions · Pre-school, Elementary, Junior & Senior High School</p>
       <h1>Start your next chapter.</h1>
       <p>Apply to Sto. Niño Catholic School. Complete your details, review your application, and take the next step with our Registrar.</p>
     </div>
@@ -171,7 +171,7 @@ async function submit() {
                 <label :for="field.key">{{ field.label }} <span v-if="field.required" aria-hidden="true">*</span></label>
                 <select v-if="field.type === 'select'" :id="field.key" v-model="data[field.key]" :required="field.required" :aria-invalid="!!errors[field.key]" :aria-describedby="`${field.key}-help`">
                   <option value="" disabled>Select {{ field.label.toLowerCase() }}</option>
-                  <option v-for="option in field.options" :key="option" :value="option">{{ option === 'JHS' ? 'Junior High School' : option === 'SHS' ? 'Senior High School' : option }}</option>
+                  <option v-for="option in field.options" :key="option" :value="option">{{ field.key === 'level' ? schoolLevels[option]?.label : option }}</option>
                 </select>
                 <textarea v-else-if="field.type === 'textarea'" :id="field.key" v-model="data[field.key]" :required="field.required" maxlength="1000" rows="2" :aria-invalid="!!errors[field.key]" :aria-describedby="`${field.key}-help`"></textarea>
                 <input v-else :id="field.key" v-model="data[field.key]" :type="field.type ?? 'text'" :required="field.required" :readonly="['age', 'schoolYear'].includes(field.key)" :max="field.type === 'date' ? todayInManila() : undefined" :min="field.type === 'number' ? 0 : undefined" :maxlength="254" :aria-invalid="!!errors[field.key]" :aria-describedby="`${field.key}-help`" />
@@ -193,7 +193,7 @@ async function submit() {
         <template v-else>
           <div v-for="section in sections" :key="section.title" class="review-section">
             <h3>{{ section.title }}</h3>
-            <dl><template v-for="field in section.fields" :key="field.key"><div><dt>{{ field.label }}</dt><dd>{{ data[field.key] || 'Not provided' }}</dd></div></template></dl>
+            <dl><template v-for="field in section.fields" :key="field.key"><div><dt>{{ field.label }}</dt><dd>{{ (field.key === 'level' ? schoolLevels[data[field.key]]?.label : data[field.key]) || 'Not provided' }}</dd></div></template></dl>
           </div>
           <p><strong>Supporting document:</strong> {{ attachment?.name || 'None attached' }}</p>
           <label class="confirmation-check"><input id="confirmation" v-model="confirmed" type="checkbox" :disabled="busy" /> I confirm that the details are accurate and understand that I must visit the Registrar’s Office to continue enrollment.</label>

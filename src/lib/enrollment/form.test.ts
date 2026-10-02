@@ -17,6 +17,20 @@ describe('registration form validation', () => {
     expect(validateApplication(validApplication, '2027-2028').errors).toHaveProperty('schoolYear');
     expect(validateApplication({ ...validApplication, level: 'other' }, '2026-2027').errors).toHaveProperty('level');
   });
+  it.each([
+    ['Preschool', 'Nursery'], ['Preschool', 'Kindergarten'],
+    ...['Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6'].map(grade => ['Elementary', grade]),
+  ])('accepts %s / %s and discards an unrelated SHS strand', (level, gradeLevel) => {
+    const { data, errors } = validateApplication({ ...validApplication, level, gradeLevel, strand: '12-STEM' }, '2026-2027');
+    expect(errors).toEqual({});
+    expect(data.strand).toBe('');
+  });
+  it.each([
+    ['Preschool', 'Grade 1'], ['Elementary', 'Kindergarten'],
+    ['Elementary', 'Grade 7'], ['JHS', 'Grade 6'], ['SHS', 'Grade 10'],
+  ])('rejects a grade from another school level: %s / %s', (level, gradeLevel) => {
+    expect(validateApplication({ ...validApplication, level, gradeLevel }, '2026-2027').errors).toHaveProperty('gradeLevel');
+  });
   it('names required fields and validates optional contact details when supplied', () => {
     const errors = validateApplication({ ...validApplication, firstName: '', email: 'bad', parentEmail: 'bad', fatherContact: 'abc', contact: '1234' }, '2026-2027').errors;
     expect(Object.keys(errors)).toEqual(expect.arrayContaining(['firstName', 'email', 'parentEmail', 'fatherContact', 'contact']));

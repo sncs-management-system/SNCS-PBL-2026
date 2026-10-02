@@ -9,6 +9,12 @@ export type Field = {
 export type Section = { title: string; description: string; fields: Field[] };
 export type Application = Record<string, string>;
 export type FieldErrors = Record<string, string>;
+export const schoolLevels: Record<string, { label: string; department: string; grades: string[] }> = {
+  Preschool: { label: 'Pre-school', department: 'preschool', grades: ['Nursery', 'Kindergarten'] },
+  Elementary: { label: 'Elementary', department: 'grade_school', grades: ['Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6'] },
+  JHS: { label: 'Junior High School', department: 'jhs', grades: ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'] },
+  SHS: { label: 'Senior High School', department: 'shs', grades: ['Grade 11', 'Grade 12'] },
+};
 export const paymentModes = ['Full Payment/Cash', 'Monthly', 'Quarterly', 'Semi-Annual'];
 export const strands: Record<string, string[]> = {
   'Grade 11': ['11-ACADEMIC', '11-TECHPRO'],
@@ -22,10 +28,10 @@ const parentFields = (prefix: string, mother = false): Field[] => [
 export function sectionsFor(data: Application): Section[] {
   return [
     { title: 'Enrollment details', description: 'Choose the level and grade you are applying for.', fields: [
-      { key: 'level', label: 'School level', type: 'select', required: true, options: ['JHS', 'SHS'] },
+      { key: 'level', label: 'School level', type: 'select', required: true, options: Object.keys(schoolLevels) },
       { key: 'schoolYear', label: 'School year', required: true, hint: 'Set by the current enrollment period.' },
       { key: 'studentStatus', label: 'Student status', type: 'select', required: true, options: ['New', 'Old', 'Returnee'] },
-      { key: 'gradeLevel', label: 'Grade level', type: 'select', required: true, options: data.level === 'SHS' ? ['Grade 11', 'Grade 12'] : ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'] },
+      { key: 'gradeLevel', label: 'Grade level', type: 'select', required: true, options: schoolLevels[data.level]?.grades ?? [] },
       ...(data.level === 'SHS' ? [{ key: 'strand', label: 'Strand', type: 'select' as const, required: true, options: strands[data.gradeLevel] ?? [] }] : []),
       { key: 'paymentMode', label: 'Mode of payment', type: 'select', required: true, options: paymentModes, hint: 'Preference only. No payment is collected online.' },
     ] },
@@ -86,7 +92,7 @@ export function validateApplication(input: unknown, schoolYear: string, today = 
       errors[`${relationship}FullName`] = `${relationship[0].toUpperCase()}${relationship.slice(1)}’s full name is required when other details are supplied.`;
     }
   }
-  if (data.level === 'JHS') data.strand = '';
+  if (data.level !== 'SHS') data.strand = '';
   return { data, errors };
 }
 // Leave room for multipart fields beneath Vercel's 4.5 MB request limit.

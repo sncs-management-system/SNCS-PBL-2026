@@ -38,6 +38,21 @@ describe('enrollment applicant workflow', () => {
     expect(wrapper.get('#strand').text()).toContain('11-TECHPRO');
     await wrapper.get('#level').setValue('JHS'); expect(wrapper.find('#strand').exists()).toBe(false);
   });
+  it('offers all four school levels and resets grade and strand when switching to the new levels', async () => {
+    await render();
+    expect(wrapper.get('#level').findAll('option').slice(1).map(option => option.text()))
+      .toEqual(['Pre-school', 'Elementary', 'Junior High School', 'Senior High School']);
+    await wrapper.get('#level').setValue('SHS'); await wrapper.get('#gradeLevel').setValue('Grade 12'); await wrapper.get('#strand').setValue('12-STEM');
+    await wrapper.get('#level').setValue('Preschool');
+    expect(wrapper.find('#strand').exists()).toBe(false);
+    expect((wrapper.get('#gradeLevel').element as HTMLSelectElement).value).toBe('');
+    expect(wrapper.get('#gradeLevel').findAll('option').slice(1).map(option => option.text())).toEqual(['Nursery', 'Kindergarten']);
+    await wrapper.get('#gradeLevel').setValue('Nursery');
+    await wrapper.get('#level').setValue('Elementary');
+    expect((wrapper.get('#gradeLevel').element as HTMLSelectElement).value).toBe('');
+    expect(wrapper.get('#gradeLevel').findAll('option').slice(1).map(option => option.text()))
+      .toEqual(['Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6']);
+  });
   it('shows field errors before review and preserves data when editing', async () => {
     await render(); await wrapper.get('form').trigger('submit'); await flushPromises();
     expect(wrapper.get('#firstName').attributes('aria-invalid')).toBe('true');

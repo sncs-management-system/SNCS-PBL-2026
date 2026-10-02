@@ -84,6 +84,11 @@ describe('PB-12 PostgreSQL migration and submission transaction', () => {
     expect((await db.query('select department, strand, last_school_name, last_school_address, middle_name, parent_email from enrollment_applications')).rows[0])
       .toEqual({ department: 'shs', strand: '12-STEM', last_school_name: null, last_school_address: null, middle_name: null, parent_email: null });
   });
+  it.each([['Preschool', 'Nursery', 'preschool'], ['Elementary', 'Grade 1', 'grade_school']])('persists %s with the schema department and no SHS strand', async (level, gradeLevel, department) => {
+      await submit(undefined, undefined, { ...validApplication, level, gradeLevel, strand: '12-STEM' });
+      expect((await db.query('select department, grade_level, strand, status from enrollment_applications')).rows[0])
+        .toEqual({ department, grade_level: gradeLevel, strand: null, status: 'pending' });
+    });
   it('rolls back every row if a related guardian violates a schema constraint', async () => {
     await expect(submit(undefined, undefined, validApplication, { duplicateGuardian: true })).rejects.toThrow();
     expect((await db.query('select id from enrollment_applications')).rows).toEqual([]);

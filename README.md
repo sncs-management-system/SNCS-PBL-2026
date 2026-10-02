@@ -2,7 +2,7 @@
 
 This repository contains the Sto. Niño Catholic School (SNCS) management-system
 project. This branch adds **PB-12: Online Enrollment Application** to the existing
-PB-10 public website, with JHS/SHS forms, an Express API, Turnstile, and Supabase persistence.
+PB-10 public website, with Pre-school, Elementary, JHS, and SHS application forms, an Express API, Turnstile, and Supabase persistence.
 
 Start with [PB-12 setup and field mapping](docs/pb12-enrollment.md) to configure
 the team's existing Supabase project and Turnstile keys. The application route is

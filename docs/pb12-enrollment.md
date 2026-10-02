@@ -4,8 +4,9 @@ Branch: `enrollment-application`. Public route: `/enrollment`.
 
 `supabase/reference/SNCS_Schema_Final.sql` is an unchanged copy of the schema
 supplied by Jan. It is the source of truth for persistence and required fields.
-The public feature remains JHS/SHS, as requested; the schema also permits preschool
-and grade_school, but no registration forms for those levels were supplied.
+The public feature supports Pre-school, Elementary, JHS, and SHS. All four use
+the schema-backed student, parent/guardian, and previous-school fields. Pre-school
+uses Nursery and Kindergarten, as confirmed by Jan; Elementary uses Grades 1–6.
 
 ## Database setup
 
@@ -110,9 +111,9 @@ and enum values in `server/enrollment-mapping.ts`.
 | Form value | Database destination |
 | --- | --- |
 | School year | Read from `enrollment_periods.school_year`; saved through `enrollment_applications.period_id` |
-| JHS / SHS | `department`: `jhs` / `shs` |
+| Pre-school / Elementary / JHS / SHS | `department`: `preschool` / `grade_school` / `jhs` / `shs` |
 | New / Old / Returnee | `applicant_type`: `new` / `old` / `returnee` |
-| Grade level, SHS strand | `grade_level`, `strand`; JHS strand is SQL NULL |
+| Grade level, SHS strand | `grade_level`, `strand`; all non-SHS strands are SQL NULL |
 | Full Payment/Cash, Monthly, Quarterly, Semi-Annual | `mode_of_payment`: `full_cash`, `monthly`, `quarterly`, `semi_annual` |
 | Student surname, first name, middle name | `surname`, `first_name`, `middle_name` |
 | Birthday, displayed age | `birth_date`; age is calculated for display, never stored |
@@ -146,9 +147,10 @@ separate name columns; the mother field asks for the full maiden name. The fixed
 father/mother/guardian section supplies the `relationship` enum. These omissions
 are explicit rather than silently discarding submitted information.
 
-The Excel grade/strand options remain: JHS Grades 7–10; Grade 11 ACADEMIC/TECHPRO;
+Grade choices are Pre-school Nursery/Kindergarten, Elementary Grades 1–6, and
+JHS Grades 7–10. The Excel SHS strand options remain: Grade 11 ACADEMIC/TECHPRO;
 Grade 12 STEM/HUMSS/GAS/ABM/ICT (stored with the form's grade-prefixed strand labels).
-The form has 29 JHS or 30 SHS fields, including the derived school year and age,
+The form has 29 non-SHS or 30 SHS fields, including the derived school year and age,
 plus the optional attachment and review/consent controls.
 
 ## Submission behavior
@@ -186,12 +188,12 @@ Registrar's Office for the remaining enrollment steps.
 Run `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:runtime`, and `pnpm build`.
 Database tests execute the exact users/enrollment DDL from the supplied reference
 schema and the PB-12 addition in local PostgreSQL via PGlite. They verify column
-mapping, JHS NULL strand, SHS strand, lowercase status, guardian/document links,
+mapping for all four departments, non-SHS NULL strand, SHS strand, lowercase status, guardian/document links,
 consent timestamps, transaction rollback, retry behavior, limits, and access grants.
 Unrelated scheduling tables/extensions and hosted Supabase Storage are not exercised.
 Adapter tests verify the open-period query and normalized RPC request. Browser tests
 use synthetic data and simulated services; no real applications are submitted.
 
 Hosted verification still requires the team's configuration and applying the
-additive migration. Submit synthetic JHS and SHS records, inspect all three tables
+additive migration. Submit synthetic records for all four departments, inspect all three tables
 and the private document, then check closed enrollment and the sixth same-IP request.
