@@ -1,13 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 import { SubmissionError, type EnrollmentStore } from './app.js';
 import { mapEnrollment } from './enrollment-mapping.js';
+import { ServiceError } from './service-error.js';
 
 export function supabaseStore(url: string, serviceKey: string): EnrollmentStore {
   const db = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
   return {
     async period() {
       const { data, error } = await db.from('enrollment_periods').select('id::text,status,school_year').eq('status', 'open').maybeSingle();
-      if (error) throw new Error('Enrollment configuration unavailable');
+      if (error) throw new ServiceError('Enrollment configuration unavailable', error.code);
       if (!data) return { status: 'closed', schoolYear: '', periodId: null };
       return { status: data.status, schoolYear: data.school_year, periodId: String(data.id) };
     },
@@ -31,7 +32,7 @@ export function supabaseStore(url: string, serviceKey: string): EnrollmentStore 
         if (error.message === 'ENROLLMENT_CLOSED') throw new SubmissionError('closed');
         if (error.message === 'RATE_LIMIT') throw new SubmissionError('rate_limit');
         if (error.message === 'SUBMISSION_CONFLICT') throw new SubmissionError('conflict');
-        throw new Error('Application save failed');
+        throw new ServiceError('Application save failed', error.code);
       }
       if (!data?.reference) throw new Error('Application receipt unavailable');
       return data;

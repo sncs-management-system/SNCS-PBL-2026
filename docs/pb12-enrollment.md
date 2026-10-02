@@ -214,6 +214,20 @@ Registrar's Office for the remaining enrollment steps.
 
 ## Verification
 
+For a submission returning 503, open the preview deployment's runtime logs and
+look for `Enrollment service failure`. Its `stage` identifies `period`,
+`client_ip`, `captcha`, `upload`, or `save`. Database failures also retain only a
+validated provider error code. Messages, SQL, applicant details, tokens, and
+credentials are never logged or returned to the browser.
+
+Run `supabase/check_pb12_setup.sql` in the project's SQL Editor to inspect the
+submission function, retry table, private bucket, and function access without
+reading applications. The first result should contain three `true` values; the
+function access result should be `true`, `false`, `false`. If the additions are
+missing, apply `supabase/migrations/202610010002_pb12_schema_alignment.sql` after
+reviewing its changes with the team. Deploying the website does not run SQL
+migrations against the hosted Supabase database.
+
 Run `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:runtime`, and `pnpm build`.
 Database tests execute the exact users/enrollment DDL from the supplied reference
 schema and the PB-12 addition in local PostgreSQL via PGlite. They verify column

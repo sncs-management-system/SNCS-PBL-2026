@@ -2,6 +2,7 @@ import express, { type ErrorRequestHandler, type Request, type Response, type Ne
 import multer from 'multer';
 import { createHash, createHmac, randomUUID } from 'node:crypto';
 import ipaddr from 'ipaddr.js';
+import { ServiceError } from './service-error.js';
 import { attachmentError, maxAttachmentBytes, validateApplication, type Application } from '../src/lib/enrollment/form.js';
 
 export type Period = { status: 'open' | 'closed'; schoolYear: string; periodId: string | null };
@@ -25,6 +26,7 @@ export function createApp(store: EnrollmentStore, verifyCaptcha: (token: string,
   app.use('/api', (_req: Request, res: Response, next: NextFunction) => { res.set('Cache-Control', 'no-store'); next(); });
   const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: maxAttachmentBytes, files: 1, fields: 3, fieldSize: 32 * 1024, parts: 4 } }).single('attachment');
   app.get('/api/enrollment/config', async (_req: Request, res: Response) => {
+    res.locals.enrollmentStage = 'period';
     const period = await store.period();
     res.json({ ...period, siteKey: config.siteKey });
   });
@@ -34,6 +36,7 @@ export function createApp(store: EnrollmentStore, verifyCaptcha: (token: string,
     }
     next();
   }, upload, async (req: Request, res: Response) => {
+    res.locals.enrollmentStage = 'period';
     const period = await store.period();
     if (period.status !== 'open' || !period.periodId) { res.status(403).json({ message: 'Enrollment is currently closed.' }); return; }
     let input: unknown;
@@ -59,7 +62,9 @@ export function createApp(store: EnrollmentStore, verifyCaptcha: (token: string,
       res.status(400).json({ message: 'Invalid submission identifier. Reload the page.' }); return;
     }
     const token = req.body?.captchaToken;
+    res.locals.enrollmentStage = 'client_ip';
     const ip = ipaddr.process(config.clientIp ? config.clientIp(req) : req.ip ?? req.socket.remoteAddress ?? '127.0.0.1').toNormalizedString();
+    res.locals.enrollmentStage = 'captcha';
     if (typeof token !== 'string' || !token || token.length > 2048 || !await verifyCaptcha(token, ip)) {
       res.status(422).json({ message: 'Please complete the security check again.', errors: { captcha: 'Security check failed or expired.' } }); return;
     }
@@ -67,7 +72,11 @@ export function createApp(store: EnrollmentStore, verifyCaptcha: (token: string,
     const attachment = file ? { name: file.originalname, type: file.mimetype, size: file.size, sha256: createHash('sha256').update(file.buffer).digest('hex') } : null;
     let receipt: Receipt;
     try {
-      if (file && attachmentPath) await store.upload(attachmentPath, file.buffer, file.mimetype);
+      if (file && attachmentPath) {
+        res.locals.enrollmentStage = 'upload';
+        await store.upload(attachmentPath, file.buffer, file.mimetype);
+      }
+      res.locals.enrollmentStage = 'save';
       receipt = await store.save({ submissionId, periodId: period.periodId, ipHash: createHmac('sha256', config.ipHashSecret).update(ip).digest('hex'), data, attachment, attachmentPath });
     } catch (error) {
       // On known transaction rejections, the file is safe to remove. On ambiguous
@@ -91,6 +100,10 @@ export function createApp(store: EnrollmentStore, verifyCaptcha: (token: string,
       res.status(422).json({ message: 'Please check the supporting document.', errors: { attachment: error.code === 'LIMIT_FILE_SIZE' ? 'Supporting document must be 4 MB or smaller.' : 'Upload only one PDF, JPG, or PNG file, up to 4 MB.' } }); return;
     }
     // Never include application data, credentials, provider responses, or SQL in public errors.
+    console.error('Enrollment service failure', {
+      stage: res.locals.enrollmentStage ?? 'request',
+      ...(error instanceof ServiceError && error.providerCode ? { providerCode: error.providerCode } : {}),
+    });
     res.status(503).json({ message: 'Enrollment service is temporarily unavailable. Keep this page open and try again.' });
   };
   app.use(handleError);

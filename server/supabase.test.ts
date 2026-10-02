@@ -31,3 +31,9 @@ it('sends normalized application and guardian records to the schema-aligned RPC'
   expect(body.p_privacy_consent).toBe(true);
   expect(body.p_guardians[0]).toMatchObject({ full_name: 'Guardian Example', relationship: 'guardian' });
 });
+it('preserves a missing RPC code without retaining database response details', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ code: 'PGRST202', message: 'private provider response', details: 'private SQL', hint: 'private hint' }), { status: 404, headers: { 'Content-Type': 'application/json' } })));
+  const failure = await supabaseStore('https://example.supabase.co', 'test-key').save({ submissionId: 'test', periodId: '1', ipHash: 'test-hash', data: validApplication, attachment: null, attachmentPath: null }).catch(error => error);
+  expect(failure).toMatchObject({ message: 'Application save failed', providerCode: 'PGRST202' });
+  expect(JSON.stringify(failure)).not.toContain('private');
+});

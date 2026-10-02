@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp, SubmissionError, type EnrollmentStore } from './app';
 import { validApplication } from '../src/lib/enrollment/fixtures';
 import { maxAttachmentBytes, sectionsFor } from '../src/lib/enrollment/form';
+import { ServiceError } from './service-error';
 
 describe('enrollment HTTP API', () => {
   const store: EnrollmentStore = { period: vi.fn(), save: vi.fn(), upload: vi.fn(), remove: vi.fn() };
@@ -77,6 +78,23 @@ describe('enrollment HTTP API', () => {
     expect((await post().expect(503)).text).not.toContain('secret');
     verify.mockResolvedValue(true); vi.mocked(store.save).mockRejectedValue(new Error('database secret'));
     expect((await post().expect(503)).body.reference).toBeUndefined();
+  });
+  it('logs only the failed stage and safe provider code, never applicant or provider details', async () => {
+    const logger = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      verify.mockRejectedValue(new Error('private token and provider response'));
+      await post().expect(503);
+      expect(logger).toHaveBeenLastCalledWith('Enrollment service failure', { stage: 'captcha' });
+      verify.mockResolvedValue(true);
+      vi.mocked(store.save).mockRejectedValue(new ServiceError('private SQL and applicant details', 'PGRST202'));
+      const response = await post().expect(503);
+      expect(logger).toHaveBeenLastCalledWith('Enrollment service failure', { stage: 'save', providerCode: 'PGRST202' });
+      expect(response.text).not.toContain('PGRST202');
+      expect(JSON.stringify(logger.mock.calls)).not.toMatch(/private|Example|test-secret|token/);
+      vi.mocked(store.save).mockRejectedValue(new ServiceError('private response', 'private-code-containing-data'));
+      await post().expect(503);
+      expect(logger).toHaveBeenLastCalledWith('Enrollment service failure', { stage: 'save' });
+    } finally { logger.mockRestore(); }
   });
   it('maps atomic database rate limits and close races, removing rejected attachments', async () => {
     vi.mocked(store.save).mockRejectedValue(new SubmissionError('rate_limit'));
