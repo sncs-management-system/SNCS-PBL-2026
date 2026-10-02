@@ -42,8 +42,10 @@ each deployment; those URLs are not needed for this workflow. The server accepts
 only the configured origin and Turnstile hostname.
 
 The security check displays loading, waiting, completion and failure states.
-It waits for the Turnstile API to be ready, makes stalled loading retryable,
-and clears old widget callbacks when leaving review or retrying. A domain
+It waits for the original Turnstile script's load event, makes stalled loading
+retryable, and resets an existing widget with Cloudflare's reset API without
+removing and recreating its iframe. Leaving review removes the widget and ignores
+callbacks from the unmounted component. A domain
 rejection explains that the widget is not configured for the current website.
 Submission always requires a verified token, including after retries.
 

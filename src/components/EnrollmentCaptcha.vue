@@ -6,11 +6,7 @@ type Turnstile = {
   reset: (id: string) => void;
   remove: (id: string) => void;
 };
-declare global { interface Window {
-  turnstile?: Turnstile;
-  onEnrollmentTurnstileLoad?: () => void;
-  enrollmentTurnstileReady?: boolean;
-} }
+declare global { interface Window { turnstile?: Turnstile } }
 const props = defineProps<{ siteKey: string }>();
 const emit = defineEmits<{ token: [value: string] }>();
 const container = ref<HTMLElement>();
@@ -18,7 +14,6 @@ const status = ref<'loading' | 'verifying' | 'verified' | 'failed'>('loading');
 const failureMessage = ref('');
 let widget: string | undefined;
 let mounted = true;
-let attempt = 0;
 let timeout: ReturnType<typeof setTimeout> | undefined;
 let removeListeners: (() => void) | undefined;
 
@@ -33,12 +28,13 @@ function fail(code?: string) {
   status.value = 'failed';
   failureMessage.value = code === '110200'
     ? 'The security check is not configured for this website. Please contact the school.'
-    : 'The security check could not load. Check your connection and try again.';
+    : code && /^(300|600)/.test(code)
+      ? 'Security verification failed. Try again, or use another browser if it keeps failing.'
+      : 'The security check could not load. Check your connection and try again.';
   emit('token', '');
 }
 
 function renderWidget() {
-  const currentAttempt = attempt;
   if (!mounted || !window.turnstile || !container.value || widget !== undefined) return;
   clearTimeoutAndListeners();
   status.value = 'verifying';
@@ -46,57 +42,57 @@ function renderWidget() {
   timeout = setTimeout(() => fail(), 60_000);
   try {
     widget = window.turnstile.render(container.value, {
-      sitekey: props.siteKey, action: 'enrollment', theme: 'light', size: 'flexible', appearance: 'always',
+      sitekey: props.siteKey, action: 'enrollment', theme: 'light', size: 'flexible',
       callback: (token: string) => {
-        if (!mounted || currentAttempt !== attempt) return;
+        if (!mounted) return;
         clearTimeoutAndListeners(); status.value = 'verified'; emit('token', token);
       },
-      'before-interactive-callback': () => { if (currentAttempt === attempt) clearTimeout(timeout); },
-      'expired-callback': () => { if (mounted && currentAttempt === attempt) fail(); },
-      'timeout-callback': () => { if (mounted && currentAttempt === attempt) fail(); },
-      'error-callback': (code: string) => { if (currentAttempt === attempt) fail(code); },
+      'before-interactive-callback': () => { if (mounted) clearTimeout(timeout); },
+      'expired-callback': () => { if (mounted) fail(); },
+      'timeout-callback': () => { if (mounted) fail(); },
+      'error-callback': (code: string) => { if (mounted) fail(code); },
     });
   } catch { fail(); }
 }
 function load() {
   clearTimeoutAndListeners();
-  attempt++;
   status.value = 'loading';
   failureMessage.value = '';
   emit('token', '');
   timeout = setTimeout(() => fail(), 20_000);
-  if (window.turnstile && window.enrollmentTurnstileReady) { renderWidget(); return; }
-  // The explicit-rendering script invokes this only when its API is initialized.
-  window.onEnrollmentTurnstileLoad = () => {
-    window.enrollmentTurnstileReady = true;
-    document.dispatchEvent(new Event('enrollment-turnstile-ready'));
-  };
   let script = document.querySelector<HTMLScriptElement>('#enrollment-turnstile');
+  if (window.turnstile && (!script || script.dataset.loaded === 'true')) { renderWidget(); return; }
   const created = !script;
   if (!script) {
     script = document.createElement('script');
     script.id = 'enrollment-turnstile';
-    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=onEnrollmentTurnstileLoad';
+    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
     script.async = true;
     script.defer = true;
   }
   const onError = () => { script.remove(); fail(); };
-  removeListeners = () => { document.removeEventListener('enrollment-turnstile-ready', renderWidget); script.removeEventListener('error', onError); };
-  document.addEventListener('enrollment-turnstile-ready', renderWidget, { once: true });
+  const onLoad = () => { script.dataset.loaded = 'true'; renderWidget(); };
+  removeListeners = () => { script.removeEventListener('load', onLoad); script.removeEventListener('error', onError); };
+  script.addEventListener('load', onLoad, { once: true });
   script.addEventListener('error', onError, { once: true });
   if (created) document.head.appendChild(script);
 }
 function reset() {
   clearTimeoutAndListeners();
-  attempt++;
-  if (widget !== undefined) window.turnstile?.remove(widget);
-  widget = undefined;
-  // Retry a script request which never completed, instead of waiting on it forever.
-  if (!window.enrollmentTurnstileReady) document.querySelector('#enrollment-turnstile')?.remove();
-  load();
+  emit('token', '');
+  if (widget !== undefined && window.turnstile) {
+    // Keep the iframe mounted and let Cloudflare reset its own challenge state.
+    // Removing and recreating it on every retry changes the original lifecycle.
+    status.value = 'verifying';
+    timeout = setTimeout(() => fail(), 60_000);
+    try { window.turnstile.reset(widget); } catch { fail(); }
+  } else {
+    document.querySelector('#enrollment-turnstile')?.remove();
+    load();
+  }
 }
 onMounted(load);
-onBeforeUnmount(() => { mounted = false; attempt++; clearTimeoutAndListeners(); if (widget !== undefined) window.turnstile?.remove(widget); });
+onBeforeUnmount(() => { mounted = false; clearTimeoutAndListeners(); if (widget !== undefined) window.turnstile?.remove(widget); });
 defineExpose({ reset });
 </script>
 
