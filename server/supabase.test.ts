@@ -1,6 +1,20 @@
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { supabaseStore } from './supabase';
 import { validApplication } from '../src/lib/enrollment/fixtures';
+
+const { query, release, connect, PoolMock } = vi.hoisted(() => {
+  const query = vi.fn(); const release = vi.fn();
+  const connect = vi.fn(() => Promise.resolve({ query, release }));
+  const PoolMock = vi.fn(function (config: { connectionString: string }) { void config; return { connect, on: vi.fn() }; });
+  return { query, release, connect, PoolMock };
+});
+vi.mock('pg', () => ({ Pool: PoolMock }));
+beforeEach(() => {
+  vi.clearAllMocks();
+  connect.mockResolvedValue({ query, release });
+  query.mockImplementation(async (text: string) => ({ rows: text.startsWith('select status') ? [{ status: 'open', school_year: '2026-2027' }]
+    : text.startsWith('select count') ? [{ count: 0 }] : text.startsWith('insert into public.enrollment_applications') ? [{ id: '1' }] : [] }));
+});
 
 afterEach(() => vi.unstubAllGlobals());
 it('reads the open team enrollment period and preserves bigint IDs as text', async () => {
@@ -21,19 +35,24 @@ it('treats no open period as closed, and distinguishes a database error', async 
   expect(await store.period()).toEqual({ status: 'closed', schoolYear: '', periodId: null });
   await expect(store.period()).rejects.toThrow('Enrollment configuration unavailable');
 });
-it('sends normalized application and guardian records to the schema-aligned RPC', async () => {
-  const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ reference: 'SNCS-TEST', created: true }), { headers: { 'Content-Type': 'application/json' } }));
-  vi.stubGlobal('fetch', fetchMock);
-  await supabaseStore('https://example.supabase.co', 'test-key').save({ submissionId: 'test', periodId: '1', ipHash: 'test-hash', data: validApplication, attachment: null, attachmentPath: null });
-  expect(String(fetchMock.mock.calls[0][0])).toContain('/rpc/submit_pb12_enrollment');
-  const body = JSON.parse(fetchMock.mock.calls[0][1].body);
-  expect(body.p_application).toMatchObject({ department: 'jhs', mode_of_payment: 'monthly', period_id: '1', strand: null });
-  expect(body.p_privacy_consent).toBe(true);
-  expect(body.p_guardians[0]).toMatchObject({ full_name: 'Guardian Example', relationship: 'guardian' });
+it('uses one verified TLS pool connection for the transaction and releases it', async () => {
+  const result = await supabaseStore('https://example.supabase.co', 'test-key', 'postgresql://user:password@pool.example:6543/postgres?sslmode=no-verify').save({ submissionId: 'test', periodId: '1', ipHash: 'test-hash', data: validApplication });
+  expect(result.created).toBe(true);
+  expect(PoolMock).toHaveBeenCalledWith(expect.objectContaining({ ssl: { rejectUnauthorized: true }, max: 2 }));
+  expect(PoolMock.mock.calls[0]?.[0].connectionString).not.toContain('sslmode');
+  expect(query.mock.calls[0][0]).toBe('begin');
+  expect(query.mock.calls.at(-1)?.[0]).toBe('commit');
+  expect(release).toHaveBeenCalledWith(false);
 });
-it('preserves a missing RPC code without retaining database response details', async () => {
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ code: 'PGRST202', message: 'private provider response', details: 'private SQL', hint: 'private hint' }), { status: 404, headers: { 'Content-Type': 'application/json' } })));
-  const failure = await supabaseStore('https://example.supabase.co', 'test-key').save({ submissionId: 'test', periodId: '1', ipHash: 'test-hash', data: validApplication, attachment: null, attachmentPath: null }).catch(error => error);
-  expect(failure).toMatchObject({ message: 'Application save failed', providerCode: 'PGRST202' });
+it('fails safely when the server database URL has not been configured', async () => {
+  await expect(supabaseStore('https://example.supabase.co', 'test-key').save({ submissionId: 'test', periodId: '1', ipHash: 'test-hash', data: validApplication })).rejects.toMatchObject({ providerCode: 'DBURL' });
+  expect(connect).not.toHaveBeenCalled();
+});
+it('rolls back and discards a failed connection without retaining database messages', async () => {
+  query.mockRejectedValueOnce({ code: '23503', message: 'private applicant details', detail: 'private SQL' });
+  const failure = await supabaseStore('https://example.supabase.co', 'test-key', 'postgresql://user:password@pool.example:6543/postgres').save({ submissionId: 'test', periodId: '1', ipHash: 'test-hash', data: validApplication }).catch(error => error);
+  expect(failure).toMatchObject({ message: 'Application save failed', providerCode: '23503' });
+  expect(query).toHaveBeenLastCalledWith('rollback');
+  expect(release).toHaveBeenCalledWith(true);
   expect(JSON.stringify(failure)).not.toContain('private');
 });

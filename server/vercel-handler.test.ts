@@ -5,7 +5,7 @@ import { validApplication } from '../src/lib/enrollment/fixtures';
 import { createVercelHandler } from './vercel-handler';
 
 const { store, verify } = vi.hoisted(() => ({
-  store: { period: vi.fn(), save: vi.fn(), upload: vi.fn(), remove: vi.fn() },
+  store: { period: vi.fn(), save: vi.fn() },
   verify: vi.fn(),
 }));
 vi.mock('./supabase', () => ({ supabaseStore: vi.fn(() => store) }));
@@ -45,12 +45,10 @@ describe('Vercel enrollment functions', () => {
 
   it('handles multipart submission and hashes the platform client IP', async () => {
     const { default: handler } = await import('../api/enrollment/applications');
-    const response = await post(handler).set('x-forwarded-for', '192.0.2.99')
-      .attach('attachment', Buffer.from('%PDF-1.4\nexample'), { filename: 'example.pdf', contentType: 'application/pdf' }).expect(201);
+    const response = await post(handler).set('x-forwarded-for', '192.0.2.99').expect(201);
     expect(response.body.reference).toBe('SNCS-TEST');
     expect(verify).toHaveBeenCalledWith('server-only-turnstile-key', 'branch.school.example', 'valid-token', ip);
     expect(store.save).toHaveBeenCalledWith(expect.objectContaining({ ipHash: createHmac('sha256', 'x'.repeat(32)).update(ip).digest('hex') }));
-    expect(store.upload).toHaveBeenCalledOnce();
   });
 
   it('rejects foreign origins and invalid platform IPs before persistence', async () => {

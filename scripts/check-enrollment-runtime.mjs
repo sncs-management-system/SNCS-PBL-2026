@@ -45,7 +45,7 @@ try {
   if (compiled.status !== 0) throw new Error(compiled.stdout || compiled.stderr || 'Server compilation failed');
   writeFileSync(resolve(output, 'package.json'), JSON.stringify({ type: 'module' }));
   // Clear host credentials before invoking the real, compiled entry points.
-  for (const key of ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_SECRET_KEY', 'TURNSTILE_SECRET_KEY',
+  for (const key of ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_SECRET_KEY', 'DATABASE_URL', 'DATABASE_SSL_CA', 'TURNSTILE_SECRET_KEY',
     'TURNSTILE_SITE_KEY', 'TURNSTILE_HOSTNAME', 'APP_ORIGIN', 'IP_HASH_SECRET']) delete process.env[key];
   const config = await import(pathToFileURL(resolve(output, 'api/enrollment/config.js')).href);
   const applications = await import(pathToFileURL(resolve(output, 'api/enrollment/applications.js')).href);

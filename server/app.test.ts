@@ -3,11 +3,11 @@ import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp, SubmissionError, type EnrollmentStore } from './app';
 import { validApplication } from '../src/lib/enrollment/fixtures';
-import { maxAttachmentBytes, sectionsFor } from '../src/lib/enrollment/form';
+import { sectionsFor } from '../src/lib/enrollment/form';
 import { ServiceError } from './service-error';
 
 describe('enrollment HTTP API', () => {
-  const store: EnrollmentStore = { period: vi.fn(), save: vi.fn(), upload: vi.fn(), remove: vi.fn() };
+  const store: EnrollmentStore = { period: vi.fn(), save: vi.fn() };
   const verify = vi.fn();
   const app = createApp(store, verify, { siteKey: 'public-key', ipHashSecret: 'a-long-test-secret', allowedOrigin: 'https://school.example' });
   const post = (data: Record<string, unknown> = { ...validApplication, periodId: '1', privacyConsent: true }, token = 'valid') => request(app).post('/api/enrollment/applications').field('application', JSON.stringify(data)).field('captchaToken', token).field('submissionId', randomUUID());
@@ -15,8 +15,6 @@ describe('enrollment HTTP API', () => {
     vi.resetAllMocks();
     vi.mocked(store.period).mockResolvedValue({ status: 'open', schoolYear: '2026-2027', periodId: '1' });
     vi.mocked(store.save).mockResolvedValue({ reference: 'SNCS-TEST', created: true });
-    vi.mocked(store.upload).mockResolvedValue(undefined);
-    vi.mocked(store.remove).mockResolvedValue(undefined);
     verify.mockResolvedValue(true);
   });
   it('returns public configuration without credentials', async () => {
@@ -41,10 +39,10 @@ describe('enrollment HTTP API', () => {
     await post().attach('attachment', Buffer.from('fake image'), { filename: 'fake.png', contentType: 'image/png' }).expect(422);
     expect(store.save).not.toHaveBeenCalled();
   });
-  it.each(sectionsFor({ level: 'SHS', gradeLevel: 'Grade 11' }).flatMap(section => section.fields).filter(field => !field.readOnly))('rejects forged $key values before CAPTCHA, upload or database access', async field => {
+  it.each(sectionsFor({ level: 'SHS', gradeLevel: 'Grade 11' }).flatMap(section => section.fields).filter(field => !field.readOnly))('rejects forged $key values before CAPTCHA or database access', async field => {
     const result = await post({ ...validApplication, level: 'SHS', gradeLevel: 'Grade 11', strand: '11-ACADEMIC', periodId: '1', privacyConsent: true, [field.key]: 'x'.repeat(field.maxLength! + 1) }).expect(422);
     expect(result.body.errors[field.key]).toBeTruthy();
-    expect(verify).not.toHaveBeenCalled(); expect(store.upload).not.toHaveBeenCalled(); expect(store.save).not.toHaveBeenCalled();
+    expect(verify).not.toHaveBeenCalled(); expect(store.save).not.toHaveBeenCalled();
   });
   it.each(['contact', 'fatherContact', 'motherContact', 'guardianContact'])('rejects invalid %s even when browser restrictions are bypassed', async key => {
     for (const value of ['091712345678', '08171234567', '0917123456', '+639171234567', '09171234567,09981234567']) {
@@ -63,10 +61,9 @@ describe('enrollment HTTP API', () => {
     await post({ ...validApplication, periodId: '1', privacyConsent: true, age: '999' }).expect(201);
     expect(store.save).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ age: expect.not.stringMatching(/^999$/) }) }));
   });
-  it('enforces file size and permits a real PDF signature', async () => {
-    await post().attach('attachment', Buffer.alloc(maxAttachmentBytes + 1), { filename: 'large.pdf', contentType: 'application/pdf' }).expect(422);
-    await post().attach('attachment', Buffer.from('%PDF-1.4\nexample'), { filename: 'document.pdf', contentType: 'application/pdf' }).expect(201);
-    expect(store.upload).toHaveBeenCalledOnce();
+  it('rejects file uploads before CAPTCHA or database access', async () => {
+    await post().attach('attachment', Buffer.from('%PDF-1.4\nexample'), { filename: 'document.pdf', contentType: 'application/pdf' }).expect(422);
+    expect(verify).not.toHaveBeenCalled(); expect(store.save).not.toHaveBeenCalled();
   });
   it('rejects missing, failed and expired CAPTCHA without saving', async () => {
     await post(undefined, '').expect(422);
@@ -96,16 +93,16 @@ describe('enrollment HTTP API', () => {
       expect(logger).toHaveBeenLastCalledWith('Enrollment service failure', { stage: 'save' });
     } finally { logger.mockRestore(); }
   });
-  it('maps atomic database rate limits and close races, removing rejected attachments', async () => {
+  it('maps atomic database rate limits and close races', async () => {
     vi.mocked(store.save).mockRejectedValue(new SubmissionError('rate_limit'));
-    const result = await post().attach('attachment', Buffer.from('%PDF-1.4'), { filename: 'document.pdf', contentType: 'application/pdf' }).expect(429);
-    expect(result.headers['retry-after']).toBe('3600'); expect(store.remove).toHaveBeenCalledOnce();
+    const result = await post().expect(429);
+    expect(result.headers['retry-after']).toBe('3600');
     vi.mocked(store.save).mockRejectedValue(new SubmissionError('closed')); await post().expect(403);
   });
-  it('returns the same receipt after a retry and removes the redundant upload', async () => {
+  it('returns the same receipt after a retry', async () => {
     vi.mocked(store.save).mockResolvedValue({ reference: 'SNCS-EXISTING', created: false });
-    const response = await post().attach('attachment', Buffer.from('%PDF-1.4'), { filename: 'document.pdf', contentType: 'application/pdf' }).expect(200);
-    expect(response.body.reference).toBe('SNCS-EXISTING'); expect(store.remove).toHaveBeenCalledOnce();
+    const response = await post().expect(200);
+    expect(response.body.reference).toBe('SNCS-EXISTING');
   });
   it('does not trust spoofed forwarding headers or a foreign origin', async () => {
     await post().set('X-Forwarded-For', '203.0.113.99').expect(201);

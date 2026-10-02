@@ -32,7 +32,7 @@ export function configuredApp(env = process.env, platform: 'server' | 'vercel' =
   if (!['https:', 'http:'].includes(origin.protocol) || origin.origin !== allowedOrigin || origin.hostname !== hostname) {
     throw new ConfigurationError('APP_ORIGIN must contain only the scheme and TURNSTILE_HOSTNAME, with an optional port');
   }
-  return createApp(supabaseStore(required(env, 'SUPABASE_URL'), env.SUPABASE_SECRET_KEY || required(env, 'SUPABASE_SERVICE_ROLE_KEY')),
+  return createApp(supabaseStore(required(env, 'SUPABASE_URL'), env.SUPABASE_SECRET_KEY || required(env, 'SUPABASE_SERVICE_ROLE_KEY'), env.DATABASE_URL, env.DATABASE_SSL_CA),
     (token, ip) => verifyTurnstile(secret, hostname, token, ip), {
       siteKey: required(env, 'TURNSTILE_SITE_KEY'), ipHashSecret, allowedOrigin,
       trustProxy: platform === 'server' ? env.TRUSTED_PROXIES?.split(',').map(value => value.trim()).filter(Boolean) : undefined,

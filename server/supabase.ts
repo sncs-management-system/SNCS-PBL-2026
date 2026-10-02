@@ -1,10 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
-import { SubmissionError, type EnrollmentStore } from './app.js';
-import { mapEnrollment } from './enrollment-mapping.js';
+import { Pool } from 'pg';
+import type { EnrollmentStore } from './app.js';
 import { ServiceError } from './service-error.js';
+import { saveEnrollment } from './enrollment-transaction.js';
 
-export function supabaseStore(url: string, serviceKey: string): EnrollmentStore {
+export function supabaseStore(url: string, serviceKey: string, databaseUrl?: string, sslCa?: string): EnrollmentStore {
   const db = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  let pool: Pool | undefined;
   return {
     async period() {
       const { data, error } = await db.from('enrollment_periods').select('id::text,status,school_year').eq('status', 'open').maybeSingle();
@@ -12,30 +14,21 @@ export function supabaseStore(url: string, serviceKey: string): EnrollmentStore 
       if (!data) return { status: 'closed', schoolYear: '', periodId: null };
       return { status: data.status, schoolYear: data.school_year, periodId: String(data.id) };
     },
-    async upload(path, buffer, type) {
-      const { error } = await db.storage.from('enrollment-documents').upload(path, buffer, { contentType: type, upsert: false });
-      if (error) throw new Error('Document upload failed');
-    },
-    async remove(path) {
-      const { error } = await db.storage.from('enrollment-documents').remove([path]);
-      if (error) throw new Error('Document cleanup failed');
-    },
     async save(input) {
-      const mapped = mapEnrollment(input.data, input.periodId);
-      const { data, error } = await db.rpc('submit_pb12_enrollment', {
-        p_submission_id: input.submissionId, p_ip_hash: input.ipHash,
-        p_application: mapped.application, p_guardians: mapped.guardians, p_school_year: input.data.schoolYear,
-        p_privacy_consent: true,
-        p_attachment: input.attachment, p_attachment_path: input.attachmentPath,
-      });
-      if (error) {
-        if (error.message === 'ENROLLMENT_CLOSED') throw new SubmissionError('closed');
-        if (error.message === 'RATE_LIMIT') throw new SubmissionError('rate_limit');
-        if (error.message === 'SUBMISSION_CONFLICT') throw new SubmissionError('conflict');
-        throw new ServiceError('Application save failed', error.code);
+      if (!databaseUrl) throw new ServiceError('Missing server database connection', 'DBURL');
+      if (!pool) {
+        const connection = new URL(databaseUrl);
+        // URL SSL options must not replace certificate verification settings.
+        for (const key of [...connection.searchParams.keys()]) if (key.startsWith('ssl')) connection.searchParams.delete(key);
+        pool = new Pool({ connectionString: connection.toString(), ssl: { rejectUnauthorized: true, ...(sslCa ? { ca: sslCa } : {}) },
+          max: 2, connectionTimeoutMillis: 10_000, idleTimeoutMillis: 10_000, allowExitOnIdle: true });
+        pool.on('error', () => console.error('Enrollment database idle connection failed'));
       }
-      if (!data?.reference) throw new Error('Application receipt unavailable');
-      return data;
+      const client = await pool.connect().catch(error => { throw new ServiceError('Database connection unavailable', error.code); });
+      let failed = false;
+      try { return await saveEnrollment(client, input); }
+      catch (error) { failed = true; throw error; }
+      finally { client.release(failed); }
     },
   };
 }

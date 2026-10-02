@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import EnrollmentCaptcha from '@/components/EnrollmentCaptcha.vue';
-import { ageAt, attachmentError, schoolLevels, sectionsFor, todayInManila, validateApplication, type Application, type FieldErrors } from '@/lib/enrollment/form';
+import { ageAt, schoolLevels, sectionsFor, todayInManila, validateApplication, type Application, type FieldErrors } from '@/lib/enrollment/form';
 
 type Config = { status: 'open' | 'closed'; schoolYear: string; siteKey: string; periodId: string | null };
 const config = ref<Config>();
@@ -20,7 +20,6 @@ const confirmed = ref(false);
 const privacyConsent = ref(false);
 const token = ref('');
 const captcha = ref<InstanceType<typeof EnrollmentCaptcha>>();
-const attachment = ref<File>();
 const receipt = ref<{ reference: string; status: string; message: string }>();
 const submissionId = ref(crypto.randomUUID());
 const errorSummary = ref<HTMLElement>();
@@ -44,12 +43,6 @@ async function loadConfig() {
   finally { loading.value = false; }
 }
 onMounted(loadConfig);
-function selectAttachment(event: Event) {
-  attachment.value = (event.target as HTMLInputElement).files?.[0];
-  const error = attachment.value ? attachmentError(attachment.value) : '';
-  if (error) errors.value.attachment = error;
-  else delete errors.value.attachment;
-}
 async function focusErrors() { await nextTick(); errorSummary.value?.focus(); }
 function validateField(key: string) {
   if (!config.value) return;
@@ -62,10 +55,6 @@ function validateCurrentApplication(): boolean {
   if (!config.value) return false;
   const validated = validateApplication(data, config.value.schoolYear);
   errors.value = validated.errors;
-  if (attachment.value) {
-    const error = attachmentError(attachment.value);
-    if (error) errors.value.attachment = error;
-  }
   if (Object.keys(errors.value).length) return false;
   Object.assign(data, validated.data);
   return true;
@@ -92,7 +81,6 @@ async function submit() {
   body.append('application', JSON.stringify({ ...data, periodId: config.value.periodId, privacyConsent: privacyConsent.value }));
   body.append('submissionId', submissionId.value);
   body.append('captchaToken', token.value);
-  if (attachment.value) body.append('attachment', attachment.value);
   try {
     const response = await fetch('/api/enrollment/applications', { method: 'POST', body, signal: AbortSignal.timeout(45_000) });
     const result = await response.json();
@@ -108,7 +96,6 @@ async function submit() {
     receipt.value = result;
     // Keep the receipt, discard personal details after confirmed persistence.
     Object.keys(data).forEach(key => delete data[key]);
-    attachment.value = undefined;
     await nextTick(); receiptHeading.value?.focus();
   } catch {
     message.value = 'We could not confirm your submission. Keep this page open and retry with a new security check; your reference will be reused if it was already saved.';
@@ -191,15 +178,6 @@ async function submit() {
               </div>
             </div>
           </fieldset>
-          <fieldset class="form-section">
-            <legend><span>07</span> Supporting document <small>(optional)</small></legend>
-            <p>Attach a document only if the school has asked you to provide one. PDF, JPG, or PNG, up to 4 MB.</p>
-            <label class="upload-box" for="attachment">Choose supporting document
-              <input id="attachment" type="file" accept=".pdf,.jpg,.jpeg,.png" :aria-invalid="!!errors.attachment" aria-describedby="attachment-help" @change="selectAttachment" />
-              <span v-if="attachment">Selected: {{ attachment.name }}</span>
-            </label>
-            <small id="attachment-help" class="field-error">{{ errors.attachment }}</small>
-          </fieldset>
           <div class="form-actions"><p>Your details are used to process this application.</p><button class="button button-secondary" type="submit">Review application →</button></div>
         </template>
         <template v-else>
@@ -207,7 +185,6 @@ async function submit() {
             <h3>{{ section.title }}</h3>
             <dl><template v-for="field in section.fields" :key="field.key"><div><dt>{{ field.label }}</dt><dd>{{ (field.key === 'level' ? schoolLevels[data[field.key]]?.label : data[field.key]) || 'Not provided' }}</dd></div></template></dl>
           </div>
-          <p><strong>Supporting document:</strong> {{ attachment?.name || 'None attached' }}</p>
           <label class="confirmation-check"><input id="confirmation" v-model="confirmed" type="checkbox" :disabled="busy" /> I confirm that the details are accurate and understand that I must visit the Registrar’s Office to continue enrollment.</label>
           <label class="confirmation-check"><input id="privacyConsent" v-model="privacyConsent" type="checkbox" :disabled="busy" :aria-invalid="!!errors.privacyConsent" /> I consent to Sto. Niño Catholic School collecting and using the personal information and documents I provide to process this enrollment application.</label>
           <div id="captcha" class="captcha-area"><EnrollmentCaptcha ref="captcha" :site-key="config.siteKey" @token="token = $event" /></div>
@@ -259,8 +236,6 @@ async function submit() {
 .field-error, .form-field .field-error { color: #ad2116; }
 .form-error-summary { padding: 1rem; border-left: 4px solid #ad2116; background: #fff0eb; margin-block: 1.5rem; scroll-margin-top: 110px; }
 .form-error-summary li { margin-top: .5rem; }
-.upload-box { display: grid; gap: .8rem; border: 1px dashed #bcafa4; padding: 1rem; font-size: .9rem; overflow-wrap: anywhere; }
-.upload-box input { max-width: 100%; }
 .form-actions { display: flex; justify-content: space-between; align-items: center; gap: 1rem; border-top: 1px solid var(--line); padding-top: 1.5rem; margin-top: 1rem; }
 .form-actions p { font-size: .8rem; color: var(--muted); max-width: 220px; }
 .button { cursor: pointer; font: inherit; font-size: .9rem; font-weight: 700; }
