@@ -2,6 +2,9 @@
 
 Branch: enrollment-application. Public route: /enrollment.
 
+For environment variables, where to obtain credentials, and step-by-step local
+and Vercel Preview setup, see [the enrollment setup guide](enrollment-setup.md).
+
 The supplied supabase/reference/SNCS_Schema_Final.sql remains unchanged. PB-12
 uses its existing enrollment_periods, enrollment_applications and
 application_guardians tables. It creates no tables, columns, indexes, functions,

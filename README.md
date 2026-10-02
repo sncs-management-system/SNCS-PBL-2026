@@ -4,9 +4,12 @@ This repository contains the Sto. Niño Catholic School (SNCS) management-system
 project. This branch adds **PB-12: Online Enrollment Application** to the existing
 PB-10 public website, with Pre-school, Elementary, JHS, and SHS application forms, an Express API, Turnstile, and Supabase persistence.
 
-Start with [PB-12 setup and field mapping](docs/pb12-enrollment.md) to configure
-the team's existing Supabase project and Turnstile keys. The application route is
-`/enrollment`; live submission requires the API and database migration.
+Start with [the enrollment setup guide](docs/enrollment-setup.md) for environment
+variables, Supabase and Turnstile credentials, local development, and Vercel
+branch previews. See [PB-12 implementation and field mapping](docs/pb12-enrollment.md)
+for the feature details. The application route is `/enrollment`; live submission
+requires the API and a working connection to the existing team database.
+No database migration is required.
 
 ## Technology alignment
 
@@ -14,7 +17,7 @@ The project follows the architecture proposed in the SSYSADD1 paper:
 
 - **Frontend:** Vue 3, Vue Router, TypeScript, and Vite
 - **Backend:** Node.js with Express (PB-12 enrollment API)
-- **Data and files:** Supabase PostgreSQL and private Storage (PB-12)
+- **Data:** Existing Supabase PostgreSQL tables (PB-12); document uploads are disabled
 - **Authentication (future backlog):** Express-managed authentication and sessions
 - **Scheduling (future backlog):** a separate Python service using Google OR-Tools
 
