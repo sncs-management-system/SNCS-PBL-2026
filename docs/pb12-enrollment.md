@@ -96,6 +96,11 @@ imports so compiled functions can load in Node's native ES module runtime. The
 website build checks both frontend and server types. `pnpm test:runtime` compiles
 the actual API entries, imports them in native Node, and checks safe startup and
 configuration retrieval with synthetic credentials and a simulated Supabase response.
+It also checks types using a language-service host matching Vercel's dependency
+resolution. `@types/express-serve-static-core` is a direct development dependency
+because Vercel's host does not canonicalize pnpm's type-package symlinks; leaving
+it only as a transitive dependency produces incomplete Express Request/Response
+types even when the ordinary TypeScript compiler passes.
 
 ## Field-to-column mapping
 

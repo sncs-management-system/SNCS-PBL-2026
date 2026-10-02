@@ -4,6 +4,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolve, relative, sep } from 'node:path';
+import ts from 'typescript';
 
 // Use native Node to catch failures hidden by Vite/Vitest/tsx import resolution.
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -13,6 +14,32 @@ const output = mkdtempSync(resolve(cache, 'pb12-runtime-'));
 let server;
 const originalFetch = globalThis.fetch;
 try {
+  // Match Vercel's language-service host, which does not canonicalize pnpm
+  // symlinks with realpath. A normal tsc run alone misses this resolution failure.
+  const configPath = resolve(root, 'api/tsconfig.json');
+  const tsConfig = ts.readConfigFile(configPath, ts.sys.readFile);
+  const parsed = ts.parseJsonConfigFileContent(tsConfig.config, ts.sys, resolve(root, 'api'), undefined, configPath);
+  const service = ts.createLanguageService({
+    getScriptFileNames: () => parsed.fileNames,
+    getScriptVersion: () => '1',
+    getScriptSnapshot: path => {
+      const contents = ts.sys.readFile(path);
+      return contents === undefined ? undefined : ts.ScriptSnapshot.fromString(contents);
+    },
+    getCurrentDirectory: () => root,
+    getCompilationSettings: () => parsed.options,
+    getDefaultLibFileName: options => ts.getDefaultLibFilePath(options),
+    readFile: ts.sys.readFile, fileExists: ts.sys.fileExists, readDirectory: ts.sys.readDirectory,
+    directoryExists: ts.sys.directoryExists, getDirectories: ts.sys.getDirectories,
+  });
+  const diagnostics = [...parsed.errors, ...parsed.fileNames.flatMap(file => [
+    ...service.getSemanticDiagnostics(file), ...service.getSyntacticDiagnostics(file),
+  ])];
+  service.dispose();
+  assert.equal(diagnostics.length, 0, ts.formatDiagnostics(diagnostics, {
+    getCanonicalFileName: path => path, getCurrentDirectory: () => root, getNewLine: () => '\n',
+  }));
+  console.info('Vercel-compatible enrollment type resolution passed.');
   const compiled = spawnSync(process.execPath, [resolve(root, 'node_modules/typescript/bin/tsc'),
     '--project', 'api/tsconfig.json', '--noEmit', 'false', '--outDir', output], { cwd: root, encoding: 'utf8' });
   if (compiled.status !== 0) throw new Error(compiled.stdout || compiled.stderr || 'Server compilation failed');
