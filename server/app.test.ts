@@ -3,13 +3,13 @@ import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp, SubmissionError, type EnrollmentStore } from './app';
 import { validApplication } from '../src/lib/enrollment/fixtures';
-import { maxAttachmentBytes } from '../src/lib/enrollment/form';
+import { maxAttachmentBytes, sectionsFor } from '../src/lib/enrollment/form';
 
 describe('enrollment HTTP API', () => {
   const store: EnrollmentStore = { period: vi.fn(), save: vi.fn(), upload: vi.fn(), remove: vi.fn() };
   const verify = vi.fn();
   const app = createApp(store, verify, { siteKey: 'public-key', ipHashSecret: 'a-long-test-secret', allowedOrigin: 'https://school.example' });
-  const post = (data = { ...validApplication, periodId: '1', privacyConsent: true }, token = 'valid') => request(app).post('/api/enrollment/applications').field('application', JSON.stringify(data)).field('captchaToken', token).field('submissionId', randomUUID());
+  const post = (data: Record<string, unknown> = { ...validApplication, periodId: '1', privacyConsent: true }, token = 'valid') => request(app).post('/api/enrollment/applications').field('application', JSON.stringify(data)).field('captchaToken', token).field('submissionId', randomUUID());
   beforeEach(() => {
     vi.resetAllMocks();
     vi.mocked(store.period).mockResolvedValue({ status: 'open', schoolYear: '2026-2027', periodId: '1' });
@@ -39,6 +39,28 @@ describe('enrollment HTTP API', () => {
     expect(invalid.body.errors.email).toBeTruthy();
     await post().attach('attachment', Buffer.from('fake image'), { filename: 'fake.png', contentType: 'image/png' }).expect(422);
     expect(store.save).not.toHaveBeenCalled();
+  });
+  it.each(sectionsFor({ level: 'SHS', gradeLevel: 'Grade 11' }).flatMap(section => section.fields).filter(field => !field.readOnly))('rejects forged $key values before CAPTCHA, upload or database access', async field => {
+    const result = await post({ ...validApplication, level: 'SHS', gradeLevel: 'Grade 11', strand: '11-ACADEMIC', periodId: '1', privacyConsent: true, [field.key]: 'x'.repeat(field.maxLength! + 1) }).expect(422);
+    expect(result.body.errors[field.key]).toBeTruthy();
+    expect(verify).not.toHaveBeenCalled(); expect(store.upload).not.toHaveBeenCalled(); expect(store.save).not.toHaveBeenCalled();
+  });
+  it.each(['contact', 'fatherContact', 'motherContact', 'guardianContact'])('rejects invalid %s even when browser restrictions are bypassed', async key => {
+    for (const value of ['091712345678', '08171234567', '0917123456', '+639171234567', '09171234567,09981234567']) {
+      const result = await post({ ...validApplication, periodId: '1', privacyConsent: true, [key]: value }).expect(422);
+      expect(result.body.errors[key]).toBeTruthy();
+    }
+    expect(verify).not.toHaveBeenCalled(); expect(store.save).not.toHaveBeenCalled();
+  });
+  it.each(sectionsFor({ level: 'SHS', gradeLevel: 'Grade 11' }).flatMap(section => section.fields).filter(field => field.required))('rejects missing required $key at the API', async field => {
+    const result = await post({ ...validApplication, level: 'SHS', gradeLevel: 'Grade 11', strand: '11-ACADEMIC', periodId: '1', privacyConsent: true, [field.key]: '   ' }).expect(422);
+    expect(result.body.errors[field.key]).toBeTruthy(); expect(store.save).not.toHaveBeenCalled();
+  });
+  it('rejects wrong JSON field types and recalculates a forged age before saving', async () => {
+    const result = await post({ ...validApplication, periodId: '1', privacyConsent: true, parentEmail: ['hidden@example.com'], birthday: 20130115, guardianContact: { phone: '09171234567' } }).expect(422);
+    expect(Object.keys(result.body.errors)).toEqual(expect.arrayContaining(['parentEmail', 'birthday', 'guardianContact']));
+    await post({ ...validApplication, periodId: '1', privacyConsent: true, age: '999' }).expect(201);
+    expect(store.save).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ age: expect.not.stringMatching(/^999$/) }) }));
   });
   it('enforces file size and permits a real PDF signature', async () => {
     await post().attach('attachment', Buffer.alloc(maxAttachmentBytes + 1), { filename: 'large.pdf', contentType: 'application/pdf' }).expect(422);

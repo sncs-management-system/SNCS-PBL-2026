@@ -27,8 +27,8 @@ const errorSummary = ref<HTMLElement>();
 const reviewHeading = ref<HTMLElement>();
 const receiptHeading = ref<HTMLElement>();
 
-watch(() => data.level, () => { data.gradeLevel = ''; data.strand = ''; });
-watch(() => data.gradeLevel, () => { data.strand = ''; });
+watch(() => data.level, () => { data.gradeLevel = ''; data.strand = ''; delete errors.value.gradeLevel; delete errors.value.strand; });
+watch(() => data.gradeLevel, () => { data.strand = ''; delete errors.value.strand; });
 watch(() => data.birthday, value => { data.age = ageAt(value ?? ''); });
 async function loadConfig() {
   loading.value = true;
@@ -51,16 +51,27 @@ function selectAttachment(event: Event) {
   else delete errors.value.attachment;
 }
 async function focusErrors() { await nextTick(); errorSummary.value?.focus(); }
-async function review() {
+function validateField(key: string) {
   if (!config.value) return;
+  const error = validateApplication(data, config.value.schoolYear).errors[key];
+  if (error) errors.value[key] = error;
+  else delete errors.value[key];
+}
+function revalidateField(key: string) { if (errors.value[key]) validateField(key); }
+function validateCurrentApplication(): boolean {
+  if (!config.value) return false;
   const validated = validateApplication(data, config.value.schoolYear);
   errors.value = validated.errors;
   if (attachment.value) {
     const error = attachmentError(attachment.value);
     if (error) errors.value.attachment = error;
   }
-  if (Object.keys(errors.value).length) { await focusErrors(); return; }
+  if (Object.keys(errors.value).length) return false;
   Object.assign(data, validated.data);
+  return true;
+}
+async function review() {
+  if (!validateCurrentApplication()) { await focusErrors(); return; }
   message.value = '';
   reviewing.value = true;
   await nextTick(); reviewHeading.value?.focus();
@@ -74,6 +85,7 @@ async function edit() {
 }
 async function submit() {
   if (busy.value || !config.value || !confirmed.value || !privacyConsent.value) return;
+  if (!validateCurrentApplication()) { reviewing.value = false; await focusErrors(); return; }
   if (!token.value) { errors.value = { captcha: 'Complete the security check before submitting.' }; await focusErrors(); return; }
   busy.value = true; message.value = ''; errors.value = {};
   const body = new FormData();
@@ -169,12 +181,12 @@ async function submit() {
             <div class="form-grid">
               <div v-for="field in section.fields" :key="field.key" class="form-field" :class="{ 'field-wide': field.type === 'textarea' }">
                 <label :for="field.key">{{ field.label }} <span v-if="field.required" aria-hidden="true">*</span></label>
-                <select v-if="field.type === 'select'" :id="field.key" v-model="data[field.key]" :required="field.required" :aria-invalid="!!errors[field.key]" :aria-describedby="`${field.key}-help`">
+                <select v-if="field.type === 'select'" :id="field.key" v-model="data[field.key]" :required="field.required" :aria-invalid="!!errors[field.key]" :aria-describedby="`${field.key}-help`" @blur="validateField(field.key)" @change="revalidateField(field.key)">
                   <option value="" disabled>Select {{ field.label.toLowerCase() }}</option>
                   <option v-for="option in field.options" :key="option" :value="option">{{ field.key === 'level' ? schoolLevels[option]?.label : option }}</option>
                 </select>
-                <textarea v-else-if="field.type === 'textarea'" :id="field.key" v-model="data[field.key]" :required="field.required" maxlength="1000" rows="2" :aria-invalid="!!errors[field.key]" :aria-describedby="`${field.key}-help`"></textarea>
-                <input v-else :id="field.key" v-model="data[field.key]" :type="field.type ?? 'text'" :required="field.required" :readonly="['age', 'schoolYear'].includes(field.key)" :max="field.type === 'date' ? todayInManila() : undefined" :min="field.type === 'number' ? 0 : undefined" :maxlength="254" :aria-invalid="!!errors[field.key]" :aria-describedby="`${field.key}-help`" />
+                <textarea v-else-if="field.type === 'textarea'" :id="field.key" v-model="data[field.key]" :required="field.required" :maxlength="field.maxLength" rows="2" :aria-invalid="!!errors[field.key]" :aria-describedby="`${field.key}-help`" @blur="validateField(field.key)" @input="revalidateField(field.key)"></textarea>
+                <input v-else :id="field.key" v-model="data[field.key]" :type="field.type ?? 'text'" :required="field.required" :readonly="field.readOnly" :max="field.type === 'date' ? todayInManila() : field.type === 'number' ? 120 : undefined" :min="field.type === 'number' ? 0 : undefined" :maxlength="field.maxLength" :pattern="field.pattern" :inputmode="field.inputMode" :aria-invalid="!!errors[field.key]" :aria-describedby="`${field.key}-help`" @blur="validateField(field.key)" @input="revalidateField(field.key)" />
                 <small :id="`${field.key}-help`" :class="{ 'field-error': errors[field.key] }">{{ errors[field.key] || field.hint }}</small>
               </div>
             </div>

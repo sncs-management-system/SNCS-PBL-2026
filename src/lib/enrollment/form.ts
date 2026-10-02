@@ -5,6 +5,11 @@ export type Field = {
   required?: boolean;
   options?: string[];
   hint?: string;
+  maxLength?: number;
+  pattern?: string;
+  validationMessage?: string;
+  inputMode?: 'numeric';
+  readOnly?: boolean;
 };
 export type Section = { title: string; description: string; fields: Field[] };
 export type Application = Record<string, string>;
@@ -20,35 +25,44 @@ export const strands: Record<string, string[]> = {
   'Grade 11': ['11-ACADEMIC', '11-TECHPRO'],
   'Grade 12': ['12-STEM', '12-HUMSS', '12-GAS', '12-ABM', '12-ICT'],
 };
+const nameRules = {
+  maxLength: 100, pattern: "(?=.*\\p{L})[\\p{L}\\p{M} .’'\\-]+",
+  validationMessage: 'Use letters, spaces, periods, apostrophes, or hyphens for names.',
+};
+const contactRules = {
+  maxLength: 11, pattern: '09[0-9]{9}', inputMode: 'numeric' as const,
+  hint: 'Enter one 11-digit mobile number starting with 09, e.g. 09171234567.',
+  validationMessage: 'Enter exactly 11 digits starting with 09, with no spaces or punctuation.',
+};
 const parentFields = (prefix: string, mother = false): Field[] => [
-  { key: `${prefix}FullName`, label: mother ? 'Full maiden name' : 'Full name', hint: 'Required if you provide an occupation or contact number below.' },
-  { key: `${prefix}Occupation`, label: 'Occupation' },
-  { key: `${prefix}Contact`, label: 'Contact number/s', type: 'tel' },
+  { ...nameRules, maxLength: 150, key: `${prefix}FullName`, label: mother ? 'Full maiden name' : 'Full name', hint: 'Required if you provide an occupation or contact number below.' },
+  { key: `${prefix}Occupation`, label: 'Occupation', maxLength: 150 },
+  { ...contactRules, key: `${prefix}Contact`, label: 'Contact number', type: 'tel' },
 ];
 export function sectionsFor(data: Application): Section[] {
-  return [
+  const sections: Section[] = [
     { title: 'Enrollment details', description: 'Choose the level and grade you are applying for.', fields: [
       { key: 'level', label: 'School level', type: 'select', required: true, options: Object.keys(schoolLevels) },
-      { key: 'schoolYear', label: 'School year', required: true, hint: 'Set by the current enrollment period.' },
+      { key: 'schoolYear', label: 'School year', required: true, readOnly: true, hint: 'Set by the current enrollment period.' },
       { key: 'studentStatus', label: 'Student status', type: 'select', required: true, options: ['New', 'Old', 'Returnee'] },
-      { key: 'gradeLevel', label: 'Grade level', type: 'select', required: true, options: schoolLevels[data.level]?.grades ?? [] },
-      ...(data.level === 'SHS' ? [{ key: 'strand', label: 'Strand', type: 'select' as const, required: true, options: strands[data.gradeLevel] ?? [] }] : []),
+      { key: 'gradeLevel', label: 'Grade level', type: 'select', required: true, options: Object.hasOwn(schoolLevels, data.level) ? schoolLevels[data.level].grades : [] },
+      ...(data.level === 'SHS' ? [{ key: 'strand', label: 'Strand', type: 'select' as const, required: true, options: Object.hasOwn(strands, data.gradeLevel) ? strands[data.gradeLevel] : [] }] : []),
       { key: 'paymentMode', label: 'Mode of payment', type: 'select', required: true, options: paymentModes, hint: 'Preference only. No payment is collected online.' },
     ] },
     { title: 'Student information', description: 'Enter the student’s details as they appear in school records.', fields: [
-      { key: 'surname', label: 'Surname', required: true },
-      { key: 'firstName', label: 'First name', required: true },
-      { key: 'middleName', label: 'Middle name' },
+      { ...nameRules, key: 'surname', label: 'Surname', required: true },
+      { ...nameRules, key: 'firstName', label: 'First name', required: true },
+      { ...nameRules, key: 'middleName', label: 'Middle name' },
       { key: 'email', label: 'Email', type: 'email', required: true },
       { key: 'parentEmail', label: 'Parent’s email address', type: 'email' },
       { key: 'messenger', label: 'Parent/guardian’s active Messenger account', required: true },
-      { key: 'birthday', label: 'Birthday', type: 'date', required: true },
-      { key: 'age', label: 'Age', type: 'number', hint: 'Calculated from the birthday.' },
+      { key: 'birthday', label: 'Birthday', type: 'date', required: true, maxLength: 10 },
+      { key: 'age', label: 'Age', type: 'number', readOnly: true, hint: 'Calculated from the birthday.' },
       { key: 'gender', label: 'Gender', type: 'select', required: true, options: ['Male', 'Female'] },
       { key: 'address', label: 'Complete address', type: 'textarea', required: true },
       { key: 'birthplace', label: 'Place of birth', required: true },
-      { key: 'religion', label: 'Religion', required: true },
-      { key: 'contact', label: 'Contact numbers', type: 'tel', required: true, hint: 'For multiple numbers, separate them with commas.' },
+      { key: 'religion', label: 'Religion', required: true, maxLength: 100 },
+      { ...contactRules, key: 'contact', label: 'Contact number', type: 'tel', required: true },
     ] },
     { title: 'Father’s information', description: 'Fill in the details that apply to your family.', fields: parentFields('father') },
     { title: 'Mother’s information', description: 'Use the mother’s full maiden name, if applicable.', fields: parentFields('mother', true) },
@@ -58,6 +72,9 @@ export function sectionsFor(data: Application): Section[] {
       { key: 'previousAddress', label: 'Former school’s complete address', type: 'textarea' },
     ] },
   ];
+  return sections.map(section => ({ ...section, fields: section.fields.map(field => ({
+    ...field, maxLength: field.maxLength ?? (field.type === 'textarea' ? 1000 : 254),
+  })) }));
 }
 // The school and API use the same date even when hosted in another time zone.
 export function todayInManila(now = new Date()): string {
@@ -68,20 +85,38 @@ export function ageAt(birthday: string, today = todayInManila()): string {
   const age = Number(today.slice(0, 4)) - Number(birthday.slice(0, 4)) - (today.slice(5) < birthday.slice(5) ? 1 : 0);
   return String(age);
 }
+function validEmail(value: string): boolean {
+  const parts = value.split('@');
+  if (parts.length !== 2) return false;
+  const [local, domain] = parts;
+  const labels = domain.split('.');
+  return local.length <= 64 && /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+$/.test(local)
+    && !local.startsWith('.') && !local.endsWith('.') && !local.includes('..')
+    && labels.length >= 2 && labels.every(label => /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/.test(label))
+    && /^(?:[A-Za-z]{2,63}|xn--[A-Za-z0-9-]{2,59})$/.test(labels.at(-1) ?? '');
+}
 export function validateApplication(input: unknown, schoolYear: string, today = todayInManila()): { data: Application; errors: FieldErrors } {
   const raw = input && typeof input === 'object' && !Array.isArray(input) ? input as Record<string, unknown> : {};
-  const context: Application = { level: typeof raw.level === 'string' ? raw.level : '', gradeLevel: typeof raw.gradeLevel === 'string' ? raw.gradeLevel : '' };
+  const context: Application = { level: typeof raw.level === 'string' ? raw.level.trim() : '', gradeLevel: typeof raw.gradeLevel === 'string' ? raw.gradeLevel.trim() : '' };
   const data: Application = {};
   const errors: FieldErrors = {};
   for (const field of sectionsFor(context).flatMap(section => section.fields)) {
     const rawValue = raw[field.key];
-    const value = typeof rawValue === 'string' ? rawValue.trim() : field.type === 'number' && typeof rawValue === 'number' ? String(rawValue) : '';
+    if (field.key === 'age') continue; // Always derived from the validated birthday.
+    const value = typeof rawValue === 'string' ? rawValue.trim() : '';
     data[field.key] = value;
-    if (field.required && !value) errors[field.key] = `${field.label} is required.`;
-    else if (value.length > (field.type === 'textarea' ? 1000 : 254)) errors[field.key] = `${field.label} is too long.`;
+    const hasControls = Array.from(value).some(character => {
+      const code = character.charCodeAt(0);
+      return code === 127 || (code < 32 && !(field.type === 'textarea' && [9, 10, 13].includes(code)));
+    });
+    if (rawValue !== undefined && rawValue !== null && typeof rawValue !== 'string') errors[field.key] = `${field.label} must be text.`;
+    else if (field.required && !value) errors[field.key] = `${field.label} is required.`;
+    else if (value.length > field.maxLength!) errors[field.key] = `${field.label} must be ${field.maxLength} characters or fewer.`;
+    else if (hasControls) errors[field.key] = `${field.label} contains invalid characters.`;
     else if (value && field.options && !field.options.includes(value)) errors[field.key] = `Choose a valid ${field.label.toLowerCase()}.`;
-    else if (value && field.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) errors[field.key] = `Enter a valid ${field.label.toLowerCase()}.`;
-    else if (value && field.type === 'tel' && !value.split(',').every(phone => /^\+?[\d\s()-]+$/.test(phone.trim()) && phone.replace(/\D/g, '').length >= 7 && phone.replace(/\D/g, '').length <= 15)) errors[field.key] = `${field.label}: enter 7–15 digits per number, separated by commas.`;
+    else if (value && field.pattern && !new RegExp(`^(?:${field.pattern})$`, 'u').test(value)) errors[field.key] = `${field.label}: ${field.validationMessage}`;
+    else if (value && field.type === 'email' && !validEmail(value)) errors[field.key] = `Enter a valid ${field.label.toLowerCase()}.`;
+    else if (value && !['select', 'email', 'tel', 'date'].includes(field.type ?? 'text') && !/[\p{L}\p{N}]/u.test(value)) errors[field.key] = `${field.label} must contain letters or numbers.`;
   }
   if (data.schoolYear !== schoolYear) errors.schoolYear = 'The school year does not match the current enrollment period. Reload the page.';
   const age = ageAt(data.birthday, today);

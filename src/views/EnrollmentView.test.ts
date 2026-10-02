@@ -61,6 +61,35 @@ describe('enrollment applicant workflow', () => {
     await wrapper.get('.button-edit').trigger('click');
     expect((wrapper.get('#firstName').element as HTMLInputElement).value).toBe('Test');
   });
+  it('enforces contact limits and shows errors on blur, then clears them when corrected', async () => {
+    await render();
+    for (const key of ['contact', 'fatherContact', 'motherContact', 'guardianContact']) {
+      const field = wrapper.get(`#${key}`);
+      expect(field.attributes('maxlength')).toBe('11'); expect(field.attributes('pattern')).toBe('09[0-9]{9}'); expect(field.attributes('inputmode')).toBe('numeric');
+      await field.setValue('08171234567'); await field.trigger('blur');
+      expect(field.attributes('aria-invalid')).toBe('true');
+      expect(wrapper.get(`#${key}-help`).text()).toContain('exactly 11 digits starting with 09');
+      await field.setValue('09171234567');
+      expect(field.attributes('aria-invalid')).toBe('false');
+    }
+  });
+  it('blocks review when maxlength is removed and an overlong contact is entered', async () => {
+    await render(); await fill();
+    const contact = wrapper.get('#contact'); contact.element.removeAttribute('maxlength');
+    await contact.setValue('091712345678'); await wrapper.get('form').trigger('submit'); await flushPromises();
+    expect(contact.attributes('aria-invalid')).toBe('true');
+    expect(wrapper.text()).not.toContain('Review your application'); expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+  it('applies field-specific limits and validates names, optional emails and addresses on blur', async () => {
+    await render();
+    expect(wrapper.get('#firstName').attributes('maxlength')).toBe('100');
+    expect(wrapper.get('#guardianFullName').attributes('maxlength')).toBe('150');
+    expect(wrapper.get('#address').attributes('maxlength')).toBe('1000');
+    for (const [key, value] of [['firstName', 'Test123'], ['parentEmail', 'a@-example.com'], ['address', '---']]) {
+      await wrapper.get(`#${key}`).setValue(value); await wrapper.get(`#${key}`).trigger('blur');
+      expect(wrapper.get(`#${key}`).attributes('aria-invalid')).toBe('true');
+    }
+  });
   it('submits only after review, confirmation and CAPTCHA, then shows saved receipt', async () => {
     await render(); await fill(); await wrapper.get('form').trigger('submit'); await flushPromises();
     expect(wrapper.get('button[type=submit]').attributes('disabled')).toBeDefined();

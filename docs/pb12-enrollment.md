@@ -153,6 +153,35 @@ Grade 12 STEM/HUMSS/GAS/ABM/ICT (stored with the form's grade-prefixed strand la
 The form has 29 non-SHS or 30 SHS fields, including the derived school year and age,
 plus the optional attachment and review/consent controls.
 
+## Field validation
+
+The form and HTTP API run the same shared validation rules. HTML length limits,
+input types, patterns, and numeric keyboards help during entry; they do not replace
+server validation. Errors appear when a field loses focus and update as it is
+corrected. The full form is validated again at review, immediately before sending,
+and at the API before CAPTCHA verification, upload, or persistence.
+
+- Every contact field accepts one mobile number: exactly 11 ASCII digits starting
+  with `09`. Spaces, punctuation, `+63`, multiple numbers, and longer/shorter values
+  are rejected. Parent/guardian numbers may be blank, but must follow this format
+  when supplied.
+- Student names allow up to 100 characters; parent/guardian names allow 150.
+  Unicode letters, accents, spaces, initials, apostrophes, and hyphens are accepted;
+  digits and other symbols are rejected.
+- Religion allows 100 characters, occupations 150, addresses 1000, and other text
+  and email fields 254. Text must contain letters or numbers and no disallowed
+  control characters; address fields allow line breaks.
+- Email validation checks the local part and domain labels. Optional emails are
+  checked when supplied. Optional fields accept blanks; non-string JSON values
+  are rejected rather than silently discarded.
+- School level, student status, gender, payment mode, grade, and SHS strand must
+  match the supplied choices and their relationships. School year and period ID
+  must match the current open period. Birthdays must be real, nonfuture dates with
+  a derived age from 0 to 120; client-provided age is always replaced.
+- Parent/guardian occupation or contact requires that person's full name. Consent,
+  CAPTCHA, submission UUID, and supporting document checks remain enforced by the
+  API. Server-owned status and processing fields remain excluded from applicant data.
+
 ## Submission behavior
 
 The browser validates, shows a review, and requires both accuracy confirmation and

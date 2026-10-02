@@ -35,6 +35,40 @@ describe('registration form validation', () => {
     const errors = validateApplication({ ...validApplication, firstName: '', email: 'bad', parentEmail: 'bad', fatherContact: 'abc', contact: '1234' }, '2026-2027').errors;
     expect(Object.keys(errors)).toEqual(expect.arrayContaining(['firstName', 'email', 'parentEmail', 'fatherContact', 'contact']));
   });
+  it.each(['contact', 'fatherContact', 'motherContact', 'guardianContact'])('requires one local 11-digit mobile number for %s', key => {
+    for (const value of ['0917123456', '091712345678', '08171234567', '+639171234567', '09abcdefghi', '0917 1234567', '09171234567,09981234567']) {
+      expect(validateApplication({ ...validApplication, [key]: value }, '2026-2027').errors).toHaveProperty(key);
+    }
+    expect(validateApplication({ ...validApplication, fatherFullName: 'Father Example', motherFullName: 'Mother Example', [key]: '09981234567' }, '2026-2027').errors).toEqual({});
+  });
+  it('accepts names with accents, initials, apostrophes and hyphens, and rejects numbers and markup', () => {
+    for (const name of ['Ma. Niño', "O'Connor", 'Dela-Cruz', 'José', '李明', 'De la Peña III']) {
+      expect(validateApplication({ ...validApplication, firstName: name }, '2026-2027').errors).toEqual({});
+    }
+    for (const name of ['123', 'Test99', '<script>', '---']) {
+      expect(validateApplication({ ...validApplication, firstName: name }, '2026-2027').errors).toHaveProperty('firstName');
+    }
+  });
+  it.each(sectionsFor({ level: 'SHS', gradeLevel: 'Grade 11' }).flatMap(section => section.fields).filter(field => !field.readOnly))('rejects over-limit and non-string values for $key', field => {
+      const base = { ...validApplication, level: 'SHS', gradeLevel: 'Grade 11', strand: '11-ACADEMIC' };
+      expect(validateApplication({ ...base, [field.key]: 'x'.repeat(field.maxLength! + 1) }, '2026-2027').errors).toHaveProperty(field.key);
+      expect(validateApplication({ ...base, [field.key]: { value: 'forged' } }, '2026-2027').errors).toHaveProperty(field.key);
+    });
+  it('rejects malformed email domains, repeated dots, and overlong local parts', () => {
+    for (const email of ['a..b@example.com', 'a@-example.com', 'a@example..com', 'a@exam_ple.com', `${'a'.repeat(65)}@example.com`]) {
+      expect(validateApplication({ ...validApplication, email }, '2026-2027').errors).toHaveProperty('email');
+    }
+    expect(validateApplication({ ...validApplication, email: 'student+enrollment@example.com' }, '2026-2027').errors).toEqual({});
+  });
+  it('rejects invisible controls and symbol-only text, but allows multiline addresses', () => {
+    expect(validateApplication({ ...validApplication, messenger: 'Example\u0000Guardian', religion: '---' }, '2026-2027').errors)
+      .toMatchObject({ messenger: expect.any(String), religion: expect.any(String) });
+    expect(validateApplication({ ...validApplication, address: '123 Main Street\nTaguig City' }, '2026-2027').errors).toEqual({});
+  });
+  it('rejects inherited object keys as grade choices without crashing', () => {
+    expect(validateApplication({ ...validApplication, level: 'SHS', gradeLevel: 'constructor', strand: 'forged' }, '2026-2027').errors)
+      .toMatchObject({ gradeLevel: expect.any(String), strand: expect.any(String) });
+  });
   it('requires the schema-required fields and the full name of any supplied guardian', () => {
     const result = validateApplication({ ...validApplication, religion: '', messenger: '', fatherOccupation: 'Teacher' }, '2026-2027');
     expect(Object.keys(result.errors)).toEqual(expect.arrayContaining(['religion', 'messenger', 'fatherFullName']));
