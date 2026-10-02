@@ -1,0 +1,331 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-10-02",
+  "purpose": "PB-10 design/content preparation; PB-11 implementation comes next",
+  "publicationState": "reference-only; not imported or published",
+  "alumni": {
+    "decision": "on-hold",
+    "action": "preserve-existing-section-and-assets"
+  },
+  "sourcePublicationDatesKnown": false,
+  "notes": [
+    "Live mission/vision differs from cached search results; prefer institutional-sources.json.",
+    "Observation date is not a publication date.",
+    "Requirements are source observations pending client review, not new application validation rules.",
+    "Existing facilities/seal imagery is sufficient; no alumni/photo archive was downloaded."
+  ],
+  "institutional": {
+    "historySource": "https://www.sncstaguig.com/about/sto-ni%C3%B1o-catholic-school/school-history",
+    "facts": {
+      "initialKindergartenPupils": 28,
+      "registeredYear": 1989,
+      "relocatedYear": 1994,
+      "peacParticipationYear": 2004,
+      "ceapMembershipYear": 2018
+    },
+    "historySummaryDraft": "Founded through the Sto. Niño Parish community, the school began as a learning center with 28 kindergarten pupils. It registered under its present name in 1989 and moved to Sampaloc Street in 1994.",
+    "visionMissionSource": "https://www.sncstaguig.com/about/sto-ni%C3%B1o-catholic-school/vision-and-mission",
+    "visionSummaryDraft": "A Catholic diocesan school system focused on relevant, transformative and future-oriented education, working joyfully with families and parishes.",
+    "missionThemes": [
+      "21st-century curriculum, programs and services",
+      "Viability of resources through collaboration",
+      "Catholic school standards and Filipino values",
+      "Care for creation",
+      "Service to people experiencing poverty",
+      "Ethical and responsible digital citizenship",
+      "Formation of families",
+      "Parish involvement"
+    ],
+    "missionCopyReview": "Use the captured live source for the moderator-approved final wording; summaries here are draft paraphrases.",
+    "coreValuesSource": "https://www.sncstaguig.com/about/sto-ni%C3%B1o-catholic-school/core-values",
+    "coreValues": [
+      "Excellence",
+      "Preferential Option for the Poor",
+      "Faith in God",
+      "Christian Discipleship",
+      "Responsible Stewardship",
+      "Respect for Human Dignity"
+    ],
+    "mottoThemes": [
+      "Simplicity",
+      "Humility",
+      "Competence"
+    ]
+  },
+  "contacts": {
+    "sourceUrl": "https://www.sncstaguig.com/contacts",
+    "address": "Sampaloc St., Zone 1, North Signal Village, Taguig City",
+    "officeHours": {
+      "text": "Monday to Friday, 8:00 AM to 5:00 PM",
+      "sourceUrl": "https://www.sncstaguig.com/home"
+    },
+    "offices": [
+      {
+        "name": "Registrar",
+        "email": "officeoftheregistrar@sncstaguig.edu.ph",
+        "messenger": "https://www.facebook.com/messages/t/1626374049"
+      },
+      {
+        "name": "Principal",
+        "emails": [
+          "sncs_tagig@yahoo.com",
+          "sncsofficeoftheprincipal@gmail.com"
+        ],
+        "phones": [
+          "8837-9702",
+          "8295-5861"
+        ],
+        "messenger": "https://www.messenger.com/t/1444145221"
+      },
+      {
+        "name": "Finance",
+        "email": "sncsfinance@gmail.com",
+        "phone": "8866-0281",
+        "messenger": "https://www.messenger.com/t/101042111999170/?messaging_source=source%3Apages%3Amessage_shortlink"
+      },
+      {
+        "name": "Library",
+        "phone": "7919-5211",
+        "website": "https://library.sncstaguig.edu.ph/",
+        "facebook": "https://www.facebook.com/sncslibrary"
+      }
+    ],
+    "otherServices": [
+      {
+        "name": "Guidance",
+        "messenger": "https://www.messenger.com/t/100063541501667",
+        "sourceUrl": "https://www.sncstaguig.com/about/student-services"
+      },
+      {
+        "name": "Clinic",
+        "facebook": "https://www.facebook.com/SNCSClinic2019/",
+        "sourceUrl": "https://www.sncstaguig.com/about/student-services"
+      }
+    ],
+    "conflict": "Enrollment procedures lists registrarsncs2004@gmail.com, while Contacts/Student Services list officeoftheregistrar@sncstaguig.edu.ph. Confirm the active channel before public content release."
+  },
+  "announcementCandidates": [
+    {
+      "slug": "office-transactions",
+      "title": "School office transactions",
+      "summaryDraft": "School office transactions are available Monday to Friday, 8:00 AM to 5:00 PM.",
+      "sourceUrl": "https://www.sncstaguig.com/home",
+      "publishedAt": null,
+      "status": "draft",
+      "visibility": "private"
+    },
+    {
+      "slug": "genyo-learning-platform-2026-2027",
+      "title": "GENYO learning platform for SY 2026–2027",
+      "summaryDraft": "The homepage announces a GENYO 5G Systems learning-platform upgrade for the school community.",
+      "sourceUrl": "https://www.sncstaguig.com/home",
+      "publishedAt": null,
+      "status": "draft",
+      "visibility": "private"
+    },
+    {
+      "slug": "psa-ordering-page",
+      "title": "School PSA ordering page",
+      "summaryDraft": "The school provides a dedicated PSA certificate-ordering link.",
+      "sourceUrl": "https://www.sncstaguig.com/home",
+      "externalUrlAsPublished": "http://www.psahelpline.ph/sncs",
+      "publishedAt": null,
+      "status": "draft",
+      "visibility": "private"
+    }
+  ],
+  "eventCandidates": [
+    {
+      "title": "Wellness break: intermediate to high school",
+      "startDate": "2026-09-10",
+      "endDateInclusive": "2026-09-15",
+      "timePrecision": "date-only",
+      "timeZone": "Asia/Manila",
+      "location": null,
+      "publishedAt": null,
+      "sourceUrl": "https://www.sncstaguig.com/home",
+      "pastAtReview": true,
+      "status": "draft",
+      "visibility": "private"
+    },
+    {
+      "title": "Employees wellness break",
+      "startDate": "2026-09-14",
+      "endDateInclusive": "2026-09-15",
+      "timePrecision": "date-only",
+      "timeZone": "Asia/Manila",
+      "location": null,
+      "publishedAt": null,
+      "sourceUrl": "https://www.sncstaguig.com/home",
+      "pastAtReview": true,
+      "status": "draft",
+      "visibility": "private"
+    },
+    {
+      "title": "Launching of CL, Science, and Math Week",
+      "startDate": "2026-09-21",
+      "endDateInclusive": "2026-09-24",
+      "timePrecision": "date-only",
+      "timeZone": "Asia/Manila",
+      "location": null,
+      "publishedAt": null,
+      "sourceUrl": "https://www.sncstaguig.com/home",
+      "pastAtReview": true,
+      "status": "draft",
+      "visibility": "private"
+    },
+    {
+      "title": "BSP and GSP investiture",
+      "startDate": "2026-09-25",
+      "endDateInclusive": "2026-09-25",
+      "timePrecision": "date-only",
+      "timeZone": "Asia/Manila",
+      "location": null,
+      "publishedAt": null,
+      "sourceUrl": "https://www.sncstaguig.com/home",
+      "pastAtReview": true,
+      "status": "draft",
+      "visibility": "private"
+    },
+    {
+      "title": "First Term Card Day and Parents' Faith Formation",
+      "startDate": "2026-09-26",
+      "endDateInclusive": "2026-09-26",
+      "timePrecision": "date-only",
+      "timeZone": "Asia/Manila",
+      "location": null,
+      "publishedAt": null,
+      "sourceUrl": "https://www.sncstaguig.com/home",
+      "pastAtReview": true,
+      "status": "draft",
+      "visibility": "private"
+    },
+    {
+      "title": "Kainang Pamilya Mahalaga Day",
+      "startDate": "2026-09-28",
+      "endDateInclusive": "2026-09-28",
+      "timePrecision": "date-only",
+      "timeZone": "Asia/Manila",
+      "location": null,
+      "publishedAt": null,
+      "sourceUrl": "https://www.sncstaguig.com/home",
+      "pastAtReview": true,
+      "status": "draft",
+      "visibility": "private"
+    },
+    {
+      "title": "Culminating of CL, Science, and Math Week",
+      "startDate": "2026-09-28",
+      "endDateInclusive": "2026-09-30",
+      "timePrecision": "date-only",
+      "timeZone": "Asia/Manila",
+      "location": null,
+      "publishedAt": null,
+      "sourceUrl": "https://www.sncstaguig.com/home",
+      "pastAtReview": true,
+      "status": "draft",
+      "visibility": "private"
+    }
+  ],
+  "officialCalendar": {
+    "sourceUrl": "https://www.sncstaguig.com/about/school-calendar",
+    "url": "https://www.google.com/calendar/embed?color=%239fe1e7&src=sncstaguig2020@gmail.com",
+    "integration": "secondary external calendar link; accessible on-site date list remains primary",
+    "reviewedMonth": "2026-10",
+    "observation": "No October event dates in the observed month view; September 28–30 activity appears in the preceding-month cells. Other months are outside this snapshot."
+  },
+  "campus": [
+    {
+      "title": "San Lorenzo Ruiz Building",
+      "sourceUrl": "https://www.sncstaguig.com/about/school-facilities-and-amenities/school-buildings/san-lorenzo-ruiz-bldg",
+      "existingImage": "/images/source-site/san-lorenzo-ruiz-building.jpg",
+      "summaryDraft": "Classrooms from nursery through senior high school, administrative offices, computer laboratories, and science laboratories."
+    },
+    {
+      "title": "Pedro Calungsod Building",
+      "sourceUrl": "https://www.sncstaguig.com/about/school-facilities-and-amenities/school-buildings/pedro-calungsod",
+      "existingImage": "/images/source-site/pedro-calungsod-building.jpg",
+      "summaryDraft": "Registrar and accounting offices, student services, TLE/ICT rooms, library, clinic, and gymnasium."
+    },
+    {
+      "title": "School Library",
+      "sourceUrl": "https://www.sncstaguig.com/about/school-facilities-and-amenities/library",
+      "existingImage": "/images/source-site/library.jpg",
+      "summaryDraft": "A place for reading, research, and assignments, with online reading-program partnerships. The homepage and library page name different JHS partners; confirm the current partner before including its name."
+    }
+  ],
+  "admissions": {
+    "sourceRoot": "https://www.sncstaguig.com/registration/admission-requirements",
+    "groups": [
+      {
+        "name": "Returning student",
+        "sourceUrl": "https://www.sncstaguig.com/registration/admission-requirements/old-student",
+        "summary": "Submit the report card to the Admission Office."
+      },
+      {
+        "name": "Preschool",
+        "sourceUrl": "https://www.sncstaguig.com/registration/admission-requirements/new-student/preschool",
+        "summary": "Kinder entrance exam; PSA certificate copies, photos, prior report card if applicable, baptism/dedication certificate, folders and envelope. Marriage certificate optional. Source lists nursery/kinder age cutoffs; confirm these before implementation."
+      },
+      {
+        "name": "Incoming Grade 1",
+        "sourceUrl": "https://www.sncstaguig.com/registration/admission-requirements/new-student/incoming-grade-1",
+        "summary": "Entrance exam, PSA certificate copies, photos, signed report card/LRN, baptism/dedication certificate, folders and envelope. Marriage certificate optional. Confirm the source age cutoff before implementation."
+      },
+      {
+        "name": "Incoming Grade 7",
+        "sourceUrl": "https://www.sncstaguig.com/registration/admission-requirements/new-student/incoming-grade-7",
+        "summary": "Entrance exam; standard documents plus good-moral certificate and sealed recommendation. TLC applicants must complete TLC requirements first."
+      },
+      {
+        "name": "Senior High School",
+        "sourceUrl": "https://www.sncstaguig.com/registration/admission-requirements/new-student/senior-high-school",
+        "summary": "Entrance exam; standard documents plus recommendation/good-moral certificate. ESC certificate for grantees and NCAE result for Grade 11 if applicable. Source lists a STEM grade threshold; confirm before implementation."
+      },
+      {
+        "name": "Transferee / returnee",
+        "sourceUrl": "https://www.sncstaguig.com/registration/admission-requirements/new-student/transferee-and-returnee",
+        "summary": "Entrance exam and standard documents; recommendation/good-moral certificate for Grades 4–12; previous ESC certificate for grantees entering Grades 8–12."
+      },
+      {
+        "name": "TLC guidance",
+        "sourceUrl": "https://www.sncstaguig.com/registration/admission-requirements/new-student/tlc-requirements",
+        "summary": "Source describes TLC participation for SY 2026–2027 and applicant groups. Present reviewed guidance and official files without promising scholarship eligibility or approval."
+      }
+    ],
+    "checklistDetailsReference": "admissions-sources.json",
+    "enrollmentLinksReference": "utility-sources.json",
+    "reservationUrl": "https://docs.google.com/forms/d/e/1FAIpQLSfRDqgIyFX8QbVIFQqo3-JLPgqvgOWHZPyvO12hLqwfFCqVRg/viewform",
+    "reservationSourceUrl": "https://www.sncstaguig.com/registration/reservation-form",
+    "externalFormsArePb12Implementation": false,
+    "fees": {
+      "sourceUrl": "https://www.sncstaguig.com/registration/school-fees",
+      "sourceSchoolYear": "2025–2026",
+      "decision": "do-not-migrate-as-current-year-fees"
+    },
+    "procedures": {
+      "sourceUrl": "https://www.sncstaguig.com/registration/enrollment-procedures",
+      "decision": "review-before-publishing; older email and online-payment flow do not match new PB-12 flow"
+    }
+  },
+  "resourceManifest": "resources-manifest.json",
+  "cmsMappingReference": "../pb10-content-design-plan.md",
+  "clientReviewItems": [
+    "Updated institutional wording",
+    "TLC file versions and transfer audience",
+    "Missing SHS withdrawal PDF if still needed",
+    "Current registrar channel/procedures",
+    "School-year enrollment availability and fees",
+    "Age/strand/conditional admission requirements",
+    "Current library reading partner"
+  ],
+  "sourceSnapshots": [
+    "institutional-sources.json",
+    "campus-sources.json",
+    "admissions-sources.json",
+    "utility-sources.json",
+    "registration-sources.json",
+    "tlc-source.json",
+    "calendar-source.json"
+  ]
+}

@@ -1,71 +1,48 @@
 <script setup lang="ts">
+import { RouterLink } from "vue-router";
 import PageHero from "@/components/PageHero.vue";
 import SectionHeading from "@/components/SectionHeading.vue";
-import { getPublicInstitutionalSections } from "@/lib/content/content";
-
-const institutionalSections = getPublicInstitutionalSections();
+import { getPublicInstitutionalSections, getPublicSchoolProfile } from "@/lib/content/content";
+const sections = getPublicInstitutionalSections();
+const profile = getPublicSchoolProfile();
 </script>
 
 <template>
-  <PageHero
-    eyebrow="About SNCS"
-    title="A school built on faith and shared mission"
-    description="Meet the story, direction, and values that shape the Sto. Niño Catholic School community."
-  />
-
-  <section class="section">
+  <PageHero eyebrow="About SNCS" title="A school built on faith and shared mission" description="Meet the story, direction, and values that shape the Sto. Niño Catholic School community." />
+  <nav class="container page-jumps" aria-label="On this page">
+    <RouterLink v-if="profile" to="/about#history">History</RouterLink>
+    <RouterLink v-if="sections.length" to="/about#mission-vision">Mission and vision</RouterLink>
+    <RouterLink v-if="profile" to="/about#core-values">Core values</RouterLink>
+    <RouterLink to="/campus#student-services">Student services</RouterLink>
+  </nav>
+  <section v-if="profile" id="history" class="section scroll-target">
     <div class="container story-grid">
       <div>
         <SectionHeading eyebrow="Our story" title="Growing with the community since 1988" />
-        <p class="lead-copy">
-          Sto. Niño Catholic School began through the pastoral vision of Rev. Fr.
-          Wilfredo “Charlie” Jundis, welcoming an initial class of 28 kindergarten
-          pupils in Signal Village.
-        </p>
-        <p>
-          From that modest beginning, the school grew into a Catholic educational
-          community committed to meaningful learning, character formation, and
-          service. That founding purpose continues to guide every learner, family,
-          teacher, and partner who becomes part of SNCS.
-        </p>
+        <p v-for="(paragraph, index) in profile.history" :key="paragraph" :class="{ 'lead-copy': index === 0 }">{{ paragraph }}</p>
       </div>
-      <aside class="story-callout">
-        <span>1988</span>
-        <strong>Our founding year</strong>
-        <p>A small beginning, sustained by faith and strengthened by community.</p>
-      </aside>
+      <ol class="school-timeline" aria-label="School milestones">
+        <li v-for="milestone in profile.milestones" :key="milestone.year"><strong>{{ milestone.year }}</strong><span>{{ milestone.title }}</span></li>
+      </ol>
     </div>
   </section>
-
-  <section class="section section-soft">
+  <section v-if="sections.length" id="mission-vision" class="section section-soft scroll-target">
     <div class="container">
-      <SectionHeading
-        eyebrow="Our direction"
-        title="Mission and vision"
-        description="These commitments keep our programs and relationships centered on the learner and the Gospel."
-      />
+      <SectionHeading eyebrow="Our direction" title="Mission and vision" description="Education, faith, and service connect our school with home and parish." />
       <div class="mission-grid">
-        <article v-for="section in institutionalSections" :key="section.id" class="mission-card">
-          <p class="eyebrow">{{ section.eyebrow }}</p>
-          <h3>{{ section.title }}</h3>
-          <p>{{ section.body }}</p>
+        <article v-for="section in sections" :key="section.id" class="mission-card">
+          <p class="eyebrow">{{ section.eyebrow }}</p><h3>{{ section.title }}</h3><p>{{ section.body }}</p>
+          <ul v-if="section.commitments" class="commitment-list"><li v-for="commitment in section.commitments" :key="commitment">{{ commitment }}</li></ul>
         </article>
       </div>
     </div>
   </section>
-
-  <section class="section">
+  <section v-if="profile" id="core-values" class="section scroll-target">
     <div class="container">
-      <SectionHeading
-        eyebrow="Our character"
-        title="The values we carry"
-        description="Three words express the kind of people we strive to become."
-      />
-      <div class="values-grid">
-        <article><span>01</span><h3>Simple</h3><p>We choose what is essential and act with sincerity.</p></article>
-        <article><span>02</span><h3>Humble</h3><p>We remain open to learning, gratitude, and service.</p></article>
-        <article><span>03</span><h3>Competent</h3><p>We pursue excellence and use our abilities responsibly.</p></article>
-      </div>
+      <SectionHeading eyebrow="Our character" title="Our six core values" description="The principles that guide the school’s philosophy of life and education." />
+      <div class="values-grid"><article v-for="(value, index) in profile.coreValues" :key="value"><span aria-hidden="true">{{ String(index + 1).padStart(2, '0') }}</span><h3>{{ value }}</h3></article></div>
+      <div class="motto-strip"><p class="eyebrow">Our school motto</p><p>{{ profile.motto }}</p></div>
+      <RouterLink class="text-link" to="/campus">Explore our campus →</RouterLink>
     </div>
   </section>
 </template>

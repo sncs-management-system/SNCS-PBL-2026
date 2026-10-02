@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import PageHero from "@/components/PageHero.vue";
 import SectionHeading from "@/components/SectionHeading.vue";
+import StudentServices from "@/components/StudentServices.vue";
 import { getPublicFacilities } from "@/lib/content/content";
 
 const facilities = getPublicFacilities();
@@ -23,7 +24,7 @@ const facilities = getPublicFacilities();
       <div class="campus-list">
         <article v-for="(facility, index) in facilities" :key="facility.id" class="campus-item">
           <div class="campus-image">
-            <img :src="facility.imageSrc" :alt="facility.imageAlt" />
+            <img :src="facility.imageSrc" :alt="facility.imageAlt" loading="lazy" />
           </div>
           <div class="campus-copy">
             <p class="eyebrow">Campus space {{ String(index + 1).padStart(2, "0") }}</p>
@@ -34,6 +35,8 @@ const facilities = getPublicFacilities();
       </div>
     </div>
   </section>
+
+  <StudentServices />
 
   <section id="alumni" class="section section-soft scroll-target">
     <div class="container feature-grid reverse">

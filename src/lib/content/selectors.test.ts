@@ -20,6 +20,13 @@ describe("getPublishedPublicItems", () => {
         publishedAt: null,
       },
       {
+        id: "archived",
+        slug: "archived",
+        status: "archived",
+        visibility: "public",
+        publishedAt: "2026-09-29T08:00:00+08:00",
+      },
+      {
         id: "private",
         slug: "private",
         status: "published",
