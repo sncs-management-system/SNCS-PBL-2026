@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { RouterLink } from "vue-router";
 import SectionHeading from "@/components/SectionHeading.vue";
+import AnnouncementCard from "@/components/AnnouncementCard.vue";
+import EventCard from "@/components/EventCard.vue";
+import { partitionEvents } from "@/lib/content/dates";
+import { getPublicSchoolContactInformation } from "@/lib/content/directory";
 import {
   getPublicAnnouncements,
   getPublicEvents,
@@ -9,16 +13,11 @@ import {
 } from "@/lib/content/content";
 
 const announcements = getPublicAnnouncements().slice(0, 2);
-const events = getPublicEvents().slice(0, 2);
+const events = partitionEvents(getPublicEvents()).upcoming.slice(0, 2);
 const facilities = getPublicFacilities();
 const institutionalSections = getPublicInstitutionalSections();
+const schoolInformation = getPublicSchoolContactInformation();
 
-const formatDate = (value: string) =>
-  new Intl.DateTimeFormat("en-PH", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(new Date(value));
 </script>
 
 <template>
@@ -37,13 +36,36 @@ const formatDate = (value: string) =>
         character, and academic growth come together.
       </p>
       <div class="hero-actions">
-        <RouterLink class="button button-primary" to="/about">Discover SNCS</RouterLink>
+        <RouterLink class="button button-primary" to="/admissions">Admissions guidance</RouterLink>
         <RouterLink class="button button-ghost" to="/contact">Contact the school</RouterLink>
       </div>
     </div>
-    <div class="hero-seal-panel">
-      <img src="/images/source-site/sncs-seal.png" alt="Sto. Niño Catholic School seal" />
-      <p>Simple. Humble. Competent.</p>
+  </section>
+
+  <aside v-if="schoolInformation" class="office-notice" aria-label="School office hours"><div class="container"><strong>School office transactions</strong><span>{{ schoolInformation.officeHours }}</span></div></aside>
+
+  <section class="section section-red">
+    <div class="container updates-grid">
+      <div>
+        <div class="section-row compact">
+          <SectionHeading eyebrow="Stay informed" title="Latest news" />
+          <RouterLink class="text-link light" to="/news">All news →</RouterLink>
+        </div>
+        <div class="update-list">
+          <AnnouncementCard v-for="item in announcements" :key="item.id" :item="item" compact />
+          <p v-if="!announcements.length" class="update-card">School announcements will appear here when available.</p>
+        </div>
+      </div>
+      <div>
+        <div class="section-row compact">
+          <SectionHeading eyebrow="Mark your calendar" title="Upcoming events" />
+          <RouterLink class="text-link light" to="/events">All events →</RouterLink>
+        </div>
+        <div class="update-list">
+          <EventCard v-for="event in events" :key="event.id" :event="event" compact />
+          <div v-if="!events.length" class="update-card"><h3>No upcoming events listed</h3><p>Visit the school calendar for the latest dates and browse past school activities.</p><RouterLink class="text-link light" to="/events">View school dates →</RouterLink></div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -78,6 +100,7 @@ const formatDate = (value: string) =>
           <p class="eyebrow">{{ section.eyebrow }}</p>
           <h3>{{ section.title }}</h3>
           <p>{{ section.body }}</p>
+          <RouterLink class="text-link" to="/about#mission-vision">Read our mission and vision →</RouterLink>
         </article>
       </div>
     </div>
@@ -108,42 +131,6 @@ const formatDate = (value: string) =>
             <p>{{ facility.description }}</p>
           </div>
         </article>
-      </div>
-    </div>
-  </section>
-
-  <section class="section section-red">
-    <div class="container updates-grid">
-      <div>
-        <div class="section-row compact">
-          <SectionHeading eyebrow="Stay informed" title="Latest news" />
-          <RouterLink class="text-link light" to="/news">All news →</RouterLink>
-        </div>
-        <div class="update-list">
-          <article v-for="item in announcements" :key="item.id" class="update-card">
-            <p class="meta">{{ item.category }} · {{ formatDate(item.publishedAt!) }}</p>
-            <h3>{{ item.title }}</h3>
-            <p>{{ item.summary }}</p>
-          </article>
-        </div>
-      </div>
-      <div>
-        <div class="section-row compact">
-          <SectionHeading eyebrow="Mark your calendar" title="Upcoming events" />
-          <RouterLink class="text-link light" to="/events">All events →</RouterLink>
-        </div>
-        <div class="update-list">
-          <article v-for="event in events" :key="event.id" class="update-card event-card">
-            <div class="date-block">
-              <span>{{ new Date(event.startsAt).toLocaleString("en-PH", { month: "short" }) }}</span>
-              <strong>{{ new Date(event.startsAt).getDate() }}</strong>
-            </div>
-            <div>
-              <h3>{{ event.title }}</h3>
-              <p>{{ event.location }}</p>
-            </div>
-          </article>
-        </div>
       </div>
     </div>
   </section>

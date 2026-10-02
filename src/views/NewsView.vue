@@ -1,29 +1,15 @@
 <script setup lang="ts">
 import PageHero from "@/components/PageHero.vue";
+import AnnouncementCard from "@/components/AnnouncementCard.vue";
 import { getPublicAnnouncements } from "@/lib/content/content";
-
 const announcements = getPublicAnnouncements();
-const formatDate = (value: string | null) =>
-  value
-    ? new Intl.DateTimeFormat("en-PH", { month: "long", day: "numeric", year: "numeric" }).format(
-        new Date(value),
-      )
-    : "";
 </script>
-
 <template>
-  <PageHero
-    eyebrow="News and advisories"
-    title="What’s happening at SNCS"
-    description="Read public announcements, school updates, and stories from our learning community."
-  />
+  <PageHero eyebrow="News and advisories" title="Stay informed at SNCS" description="Read school announcements and updates for our learners and families." />
   <section class="section">
     <div class="container content-list">
-      <article v-for="item in announcements" :key="item.id" class="content-card">
-        <p class="meta">{{ item.category }} · {{ formatDate(item.publishedAt) }}</p>
-        <h2>{{ item.title }}</h2>
-        <p>{{ item.summary }}</p>
-      </article>
+      <AnnouncementCard v-for="item in announcements" :key="item.id" :item="item" />
+      <p v-if="!announcements.length" class="empty-state">There are no announcements to share yet. Please check back for school updates.</p>
     </div>
   </section>
 </template>

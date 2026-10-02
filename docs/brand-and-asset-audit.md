@@ -22,12 +22,13 @@ Reference reviewed: <https://www.sncstaguig.com/>
 
 | Local file | Current use | Provenance |
 | --- | --- | --- |
-| `sncs-seal.png` | Header and hero identity | Existing public SNCS website |
+| `sncs-seal.png` | Header identity | Existing public SNCS website |
 | `campus-front.jpg` | Home hero | Existing public SNCS website |
 | `san-lorenzo-ruiz-building.jpg` | Facility content | Existing public SNCS website |
 | `pedro-calungsod-building.jpg` | Facility content | Existing public SNCS website |
 | `library.jpg` | Facility content | Existing public SNCS website |
 | `alumni-achievers.jpg` | Alumni feature | Existing public SNCS website |
+| `genyo-2026-2027.png` | Optional announcement image example | GENYO graphic beside its caption on the [official homepage](https://www.sncstaguig.com/home), retrieved 2 October 2026; 1280 × 632 PNG |
 
 These files are included only to support the approved redesign prototype while the
 client's official image library is pending. Before production, the team should:
