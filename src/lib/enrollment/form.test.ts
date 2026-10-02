@@ -40,7 +40,7 @@ describe('registration form validation', () => {
   });
   it('limits file size, extension and MIME type', () => {
     expect(attachmentError({ size: maxAttachmentBytes, type: 'application/pdf', name: 'file.pdf' })).toBe('');
-    expect(attachmentError({ size: maxAttachmentBytes + 1, type: 'application/pdf', name: 'file.pdf' })).toContain('5 MB');
+    expect(attachmentError({ size: maxAttachmentBytes + 1, type: 'application/pdf', name: 'file.pdf' })).toContain('4 MB');
     expect(attachmentError({ size: 1, type: 'image/png', name: 'file.exe' })).toContain('PDF');
     expect(attachmentError({ size: 0, type: 'application/pdf', name: 'file.pdf' })).toContain('empty');
   });

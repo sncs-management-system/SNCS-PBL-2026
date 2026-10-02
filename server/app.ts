@@ -1,4 +1,4 @@
-import express, { type ErrorRequestHandler } from 'express';
+import express, { type ErrorRequestHandler, type Request } from 'express';
 import multer from 'multer';
 import { createHash, createHmac, randomUUID } from 'node:crypto';
 import ipaddr from 'ipaddr.js';
@@ -16,7 +16,7 @@ export interface EnrollmentStore {
 export class SubmissionError extends Error {
   constructor(public code: 'closed' | 'rate_limit' | 'conflict') { super(code); }
 }
-export type AppConfig = { siteKey: string; ipHashSecret: string; allowedOrigin: string; trustProxy?: string[] };
+export type AppConfig = { siteKey: string; ipHashSecret: string; allowedOrigin: string; trustProxy?: string[]; clientIp?: (req: Request) => string };
 export function createApp(store: EnrollmentStore, verifyCaptcha: (token: string, ip: string) => Promise<boolean>, config: AppConfig) {
   const app = express();
   app.disable('x-powered-by');
@@ -59,7 +59,7 @@ export function createApp(store: EnrollmentStore, verifyCaptcha: (token: string,
       res.status(400).json({ message: 'Invalid submission identifier. Reload the page.' }); return;
     }
     const token = req.body?.captchaToken;
-    const ip = ipaddr.process(req.ip ?? req.socket.remoteAddress ?? '127.0.0.1').toNormalizedString();
+    const ip = ipaddr.process(config.clientIp ? config.clientIp(req) : req.ip ?? req.socket.remoteAddress ?? '127.0.0.1').toNormalizedString();
     if (typeof token !== 'string' || !token || token.length > 2048 || !await verifyCaptcha(token, ip)) {
       res.status(422).json({ message: 'Please complete the security check again.', errors: { captcha: 'Security check failed or expired.' } }); return;
     }
@@ -88,7 +88,7 @@ export function createApp(store: EnrollmentStore, verifyCaptcha: (token: string,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleError: ErrorRequestHandler = (error, _req, res, _next) => {
     if (error instanceof multer.MulterError) {
-      res.status(422).json({ message: 'Please check the supporting document.', errors: { attachment: error.code === 'LIMIT_FILE_SIZE' ? 'Supporting document must be 5 MB or smaller.' : 'Upload only one PDF, JPG, or PNG file, up to 5 MB.' } }); return;
+      res.status(422).json({ message: 'Please check the supporting document.', errors: { attachment: error.code === 'LIMIT_FILE_SIZE' ? 'Supporting document must be 4 MB or smaller.' : 'Upload only one PDF, JPG, or PNG file, up to 4 MB.' } }); return;
     }
     // Never include application data, credentials, provider responses, or SQL in public errors.
     res.status(503).json({ message: 'Enrollment service is temporarily unavailable. Keep this page open and try again.' });

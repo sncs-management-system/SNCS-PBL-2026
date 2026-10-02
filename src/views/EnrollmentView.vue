@@ -181,7 +181,7 @@ async function submit() {
           </fieldset>
           <fieldset class="form-section">
             <legend><span>07</span> Supporting document <small>(optional)</small></legend>
-            <p>Attach a document only if the school has asked you to provide one. PDF, JPG, or PNG, up to 5 MB.</p>
+            <p>Attach a document only if the school has asked you to provide one. PDF, JPG, or PNG, up to 4 MB.</p>
             <label class="upload-box" for="attachment">Choose supporting document
               <input id="attachment" type="file" accept=".pdf,.jpg,.jpeg,.png" :aria-invalid="!!errors.attachment" aria-describedby="attachment-help" @change="selectAttachment" />
               <span v-if="attachment">Selected: {{ attachment.name }}</span>

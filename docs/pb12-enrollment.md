@@ -42,6 +42,56 @@ Set `HOST=0.0.0.0` if required by the host; use HTTPS at the reverse proxy.
 `TRUSTED_PROXIES` must contain only actual proxy IPs/CIDRs so the rate limiter sees
 the correct client address. Forwarded headers are otherwise ignored.
 
+## Vercel branch preview
+
+The branch includes `vercel.json` and two Node function entry points under
+`api/enrollment/`. Vercel serves the built Vite website and these functions
+together; it does not need to start the separate local Express listener.
+The page rewrites support direct visits/reloads of `/enrollment` and the existing
+website routes while leaving API and asset requests separate.
+
+In the Vercel project, set these variables for **Preview**, scoped to
+`enrollment-application` when using branch-specific credentials:
+
+| Variable | Value/type |
+| --- | --- |
+| `SUPABASE_URL` | Existing project URL; Config |
+| `SUPABASE_SERVICE_ROLE_KEY` | Existing service-role key; Secret. A current `sb_secret_` key may instead be stored as `SUPABASE_SECRET_KEY` |
+| `TURNSTILE_SITE_KEY` | Widget site key; Config |
+| `TURNSTILE_SECRET_KEY` | Widget secret key; Secret |
+| `TURNSTILE_HOSTNAME` | Exact branch hostname, no scheme, port, or path; Config |
+| `APP_ORIGIN` | `https://` followed by that hostname, no trailing slash; Config |
+| `IP_HASH_SECRET` | Stable random secret of at least 32 characters; Secret |
+
+The frontend's `VITE_SUPABASE_URL`/`VITE_SUPABASE_PUBLISHABLE_KEY` do not replace
+these API credentials. Never put service-role, Supabase secret, Turnstile secret,
+or IP hashing keys in `VITE_*` variables.
+
+For Jan's branch preview, use:
+
+```
+TURNSTILE_HOSTNAME=sncs-pbl-2026-git-enrollment-application-jans-projects-244b4656.vercel.app
+APP_ORIGIN=https://sncs-pbl-2026-git-enrollment-application-jans-projects-244b4656.vercel.app
+```
+
+Add that exact hostname to Cloudflare Turnstile's Hostname Management. Use the
+stable branch URL for testing; a different commit URL requires its own hostname
+authorization and matching origin settings. This does not require a custom domain.
+Do not authorize the shared `vercel.app` parent domain.
+
+Redeploy the latest `enrollment-application` commit after saving variables.
+Open `/api/enrollment/config` on that preview to check routing: JSON with the
+period and site key means the API is responding. A 404 means the function isn't
+deployed. A 503 means configuration or Supabase is unavailable; inspect Vercel's
+function logs for missing setting names. A successful closed response means no
+enrollment period is open. Only open a period through the team's database workflow.
+The additive migration above is still required for submission.
+
+The Vercel adapter uses the platform-controlled `x-vercel-forwarded-for` address
+for CAPTCHA and rate limiting. It never trusts a browser-provided Host header
+to authorize a site, and it fails safely if the platform client IP is unavailable.
+Function initialization is lazy, so a build does not require secrets to be present.
+
 ## Field-to-column mapping
 
 UI labels remain readable; the server converts them to the schema's exact names
@@ -96,8 +146,10 @@ plus the optional attachment and review/consent controls.
 The browser validates, shows a review, and requires both accuracy confirmation and
 explicit privacy consent plus Turnstile. The API validates again and checks that
 the selected period is still active, even if another period has the same school
-year. It uploads an optional PDF/JPG/PNG (maximum 5 MB; MIME, extension, and signature
+year. It uploads an optional PDF/JPG/PNG (maximum 4 MB; MIME, extension, and signature
 checks) to private Storage, then calls `submit_pb12_enrollment`.
+The 4 MB file limit leaves room for form fields beneath Vercel's 4.5 MB request
+limit. The private Storage bucket's existing 5 MB cap remains unchanged.
 
 One database transaction inserts the application, guardian rows, document record,
 and retry receipt. A failure in any related insert rolls back the whole database

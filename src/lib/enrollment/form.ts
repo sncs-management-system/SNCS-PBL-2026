@@ -89,10 +89,11 @@ export function validateApplication(input: unknown, schoolYear: string, today = 
   if (data.level === 'JHS') data.strand = '';
   return { data, errors };
 }
-export const maxAttachmentBytes = 5 * 1024 * 1024;
+// Leave room for multipart fields beneath Vercel's 4.5 MB request limit.
+export const maxAttachmentBytes = 4 * 1024 * 1024;
 export function attachmentError(file: { size: number; type: string; name: string }): string {
   if (!file.size) return 'Supporting document is empty.';
-  if (file.size > maxAttachmentBytes) return 'Supporting document must be 5 MB or smaller.';
+  if (file.size > maxAttachmentBytes) return 'Supporting document must be 4 MB or smaller.';
   const extensions: Record<string, RegExp> = { 'application/pdf': /\.pdf$/i, 'image/jpeg': /\.jpe?g$/i, 'image/png': /\.png$/i };
   if (!extensions[file.type]?.test(file.name)) return 'Supporting document must be a PDF, JPG, or PNG file.';
   return '';

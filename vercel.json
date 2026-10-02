@@ -1,0 +1,17 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "buildCommand": "pnpm build",
+  "outputDirectory": "dist",
+  "functions": {
+    "api/enrollment/*.ts": { "maxDuration": 60 }
+  },
+  "rewrites": [
+    { "source": "/enrollment", "destination": "/index.html" },
+    { "source": "/about", "destination": "/index.html" },
+    { "source": "/campus", "destination": "/index.html" },
+    { "source": "/news", "destination": "/index.html" },
+    { "source": "/events", "destination": "/index.html" },
+    { "source": "/contact", "destination": "/index.html" }
+  ]
+}

@@ -3,6 +3,7 @@ import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp, SubmissionError, type EnrollmentStore } from './app';
 import { validApplication } from '../src/lib/enrollment/fixtures';
+import { maxAttachmentBytes } from '../src/lib/enrollment/form';
 
 describe('enrollment HTTP API', () => {
   const store: EnrollmentStore = { period: vi.fn(), save: vi.fn(), upload: vi.fn(), remove: vi.fn() };
@@ -40,7 +41,7 @@ describe('enrollment HTTP API', () => {
     expect(store.save).not.toHaveBeenCalled();
   });
   it('enforces file size and permits a real PDF signature', async () => {
-    await post().attach('attachment', Buffer.alloc(5 * 1024 * 1024 + 1), { filename: 'large.pdf', contentType: 'application/pdf' }).expect(422);
+    await post().attach('attachment', Buffer.alloc(maxAttachmentBytes + 1), { filename: 'large.pdf', contentType: 'application/pdf' }).expect(422);
     await post().attach('attachment', Buffer.from('%PDF-1.4\nexample'), { filename: 'document.pdf', contentType: 'application/pdf' }).expect(201);
     expect(store.upload).toHaveBeenCalledOnce();
   });
