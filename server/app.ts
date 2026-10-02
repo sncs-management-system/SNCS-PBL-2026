@@ -82,6 +82,7 @@ export function createApp(store: EnrollmentStore, verifyCaptcha: (token: string,
     // Never include application data, credentials, provider responses, or SQL in public errors.
     console.error('Enrollment service failure', {
       stage: res.locals.enrollmentStage ?? 'request',
+      ...(error instanceof ServiceError && error.component ? { component: error.component } : {}),
       ...(error instanceof ServiceError && error.providerCode ? { providerCode: error.providerCode } : {}),
     });
     res.status(503).json({ message: 'Enrollment service is temporarily unavailable. Keep this page open and try again.' });

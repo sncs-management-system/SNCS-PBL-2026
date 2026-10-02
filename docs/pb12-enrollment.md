@@ -93,3 +93,13 @@ dummy submission; no real application is submitted automatically.
 
 supabase/check_pb12_setup.sql only reads the existing enrollment column metadata.
 Do not rerun the original CREATE TABLE schema against the existing database.
+
+## Connection diagnostics
+
+When DATABASE_URL is present, enrollment availability first runs SELECT 1 over
+that existing server connection. It reads no applicant records and changes no
+schema or permissions. Failed connections are logged with component
+ database_connection and only an approved error code, including standard DNS,
+connection and TLS failures. Transaction errors use database_transaction.
+Error messages, connection strings and passwords are not logged. A configured
+connection must pass this check before the form is offered.

@@ -52,6 +52,6 @@ export async function saveEnrollment(client: TransactionClient, input: SaveInput
   } catch (error) {
     await client.query('rollback').catch(() => undefined);
     if (error instanceof SubmissionError) throw error;
-    throw new ServiceError('Application save failed', error && typeof error === 'object' && 'code' in error ? error.code : undefined);
+    throw new ServiceError('Application save failed', error && typeof error === 'object' && 'code' in error ? error.code : undefined, 'database_transaction');
   }
 }

@@ -56,3 +56,23 @@ it('rolls back and discards a failed connection without retaining database messa
   expect(release).toHaveBeenCalledWith(true);
   expect(JSON.stringify(failure)).not.toContain('private');
 });
+it('checks database reachability with SELECT 1 before returning enrollment availability', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify([{ id: '1', status: 'open', school_year: '2026' }]), { headers: { 'Content-Type': 'application/json' } })));
+  expect(await supabaseStore('https://example.supabase.co', 'test-key', 'postgresql://user:password@pool.example:6543/postgres').period()).toMatchObject({ status: 'open' });
+  expect(query).toHaveBeenCalledExactlyOnceWith('select 1');
+  expect(release).toHaveBeenCalledWith(false);
+});
+it('retains a known TLS failure code while discarding the connection URL and message', async () => {
+  connect.mockRejectedValueOnce(Object.assign(new Error('private password in provider message'), { code: 'SELF_SIGNED_CERT_IN_CHAIN' }));
+  const failure = await supabaseStore('https://example.supabase.co', 'test-key', 'postgresql://user:private-password@pool.example:6543/postgres').period().catch(error => error);
+  expect(failure).toMatchObject({ component: 'database_connection', providerCode: 'SELF_SIGNED_CERT_IN_CHAIN' });
+  expect(JSON.stringify(failure)).not.toContain('private');
+  expect(query).not.toHaveBeenCalled();
+});
+it.each(['not-a-database-url', 'https://wrong.example'])('rejects a malformed connection string without returning its value', async url => {
+  const failure = await supabaseStore('https://example.supabase.co', 'test-key', url).period().catch(error => error);
+  expect(failure.component).toBe('database_connection');
+  expect(['DBFMT', 'ERR_INVALID_URL']).toContain(failure.providerCode);
+  expect(JSON.stringify(failure)).not.toContain(url);
+  expect(connect).not.toHaveBeenCalled();
+});
