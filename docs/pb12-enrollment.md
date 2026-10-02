@@ -96,10 +96,13 @@ Do not rerun the original CREATE TABLE schema against the existing database.
 
 ## Connection diagnostics
 
-When DATABASE_URL is present, enrollment availability first runs SELECT 1 over
-that existing server connection. It reads no applicant records and changes no
-schema or permissions. Failed connections are logged with component
- database_connection and only an approved error code, including standard DNS,
+Enrollment availability reads the active period through the existing Supabase
+API without opening the PostgreSQL write connection. A write connection failure
+does not block viewing or completing the form. Submission failures keep the
+entered details on the review page so the applicant can retry. Failed write
+connections are logged with component database_connection and only an approved
+error code, including standard DNS,
 connection and TLS failures. Transaction errors use database_transaction.
-Error messages, connection strings and passwords are not logged. A configured
-connection must pass this check before the form is offered.
+Error messages, connection strings and passwords are not logged. Saving still
+requires a working, verified TLS connection; certificate verification is never
+disabled to restore access to the form.

@@ -29,15 +29,8 @@ export function supabaseStore(url: string, serviceKey: string, databaseUrl?: str
   }
   return {
     async period() {
-      // A configured database must be reachable before offering the form.
-      // This read-only probe diagnoses connection failures without test submissions.
-      if (databaseUrl) {
-        const client = await connectDatabase();
-        let failed = false;
-        try { await client.query('select 1'); }
-        catch (error) { failed = true; throw new ServiceError('Database connection unavailable', error && typeof error === 'object' && 'code' in error ? error.code : undefined, 'database_connection'); }
-        finally { client.release(failed); }
-      }
+      // Availability uses the existing Supabase API independently of the write connection.
+      // A database connection failure must not prevent viewing or completing the form.
       const { data, error } = await db.from('enrollment_periods').select('id::text,status,school_year').eq('status', 'open').maybeSingle();
       if (error) throw new ServiceError('Enrollment configuration unavailable', error.code);
       if (!data) return { status: 'closed', schoolYear: '', periodId: null };
