@@ -2,6 +2,8 @@
 
 Implemented on 2 October 2026 on `feat/pb11-resource-downloads`, based on PB-10
 commit `39daca5`. PB-12 enrollment, staff CMS screens and Alumni are outside this change.
+Rechecked on 3 October against main `4b6c2c4`: existing PB-12 enrollment is
+preserved alongside the Resources navigation and downloads.
 
 ## Public experience
 

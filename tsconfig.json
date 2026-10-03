@@ -18,5 +18,5 @@
       "@/*": ["src/*"]
     }
   },
-  "include": ["src/**/*.ts", "src/**/*.vue", "vite.config.ts", "eslint.config.js"]
+  "include": ["src/**/*.ts", "src/**/*.vue", "server/**/*.ts", "api/**/*.ts", "vite.config.ts", "eslint.config.js"]
 }

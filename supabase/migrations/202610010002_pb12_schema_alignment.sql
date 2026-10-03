@@ -1,0 +1,3 @@
+-- RETIRED: PB-12 uses only the existing SNCS database structure.
+-- No database migration is required. Do not apply earlier versions of this file.
+-- The server performs parameterized transactions using DATABASE_URL.

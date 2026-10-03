@@ -1,21 +1,30 @@
 # SNCS Management System
 
 This repository contains the Sto. Niño Catholic School (SNCS) management-system
-project. This branch implements **PB-10: Public Website Content** and
-**PB-11: Public Resource Downloads** as a responsive Vue.js single-page application.
+project, including **PB-10: Public Website Content**, **PB-11: Public Resource
+Downloads**, and **PB-12: Online Enrollment Application**. The Vue.js website
+serves public TLC PDFs from Supabase and supports Pre-school, Elementary, JHS,
+and SHS application forms through an Express API, Turnstile, and Supabase persistence.
+
+Start with [the enrollment setup guide](docs/enrollment-setup.md) for environment
+variables, Supabase and Turnstile credentials, local development, and Vercel
+branch previews. See [PB-12 implementation and field mapping](docs/pb12-enrollment.md)
+for the feature details. The application route is `/enrollment`; live submission
+requires the API and a working connection to the existing team database.
+No database migration is required.
 
 ## Technology alignment
 
 The project follows the architecture proposed in the SSYSADD1 paper:
 
 - **Frontend:** Vue 3, Vue Router, TypeScript, and Vite
-- **Backend (future backlog):** Node.js with Express
-- **Resource data and files:** Supabase PostgreSQL and Storage
+- **Backend:** Node.js with Express (PB-12 enrollment API)
+- **Data and files:** Supabase PostgreSQL and public TLC PDFs in Supabase Storage;
+  enrollment document uploads are disabled
 - **Authentication (future backlog):** Express-managed authentication and sessions
 - **Scheduling (future backlog):** a separate Python service using Google OR-Tools
 
-The public frontend and Supabase resource reads/downloads are implemented.
-Backend, staff authentication/CMS, enrollment and scheduling remain future work.
+Staff authentication, Registrar screens, CMS, and scheduling remain future work.
 
 ## PB-10 public website
 
@@ -33,7 +42,7 @@ Backend, staff authentication/CMS, enrollment and scheduling remain future work.
 
 ## Local development
 
-Use Node.js 20.19+ (or 22.12+) and pnpm.
+Use Node.js 22.12+ and pnpm.
 
 ```bash
 pnpm install
@@ -83,7 +92,8 @@ same `published` and `public` visibility contract. This frontend filter is not a
 database access policy: a future backend must return only public records and
 enforce authorization before sending data to the browser. Resource reads already
 use RLS and limited column grants. CMS editing screens, other Supabase content
-adapters, and enrollment submission remain pending.
+adapters, and staff authentication remain pending. PB-12 adds enrollment
+submission; live use requires the server configuration described above.
 
 ## Asset note
 

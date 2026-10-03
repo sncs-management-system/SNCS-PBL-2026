@@ -18,6 +18,7 @@ const schoolInformation = getPublicSchoolContactInformation();
         <RouterLink to="/about">About SNCS</RouterLink>
         <RouterLink to="/campus">Campus life</RouterLink>
         <RouterLink to="/news">Latest news</RouterLink>
+        <RouterLink to="/enrollment">Apply for enrollment</RouterLink>
         <RouterLink to="/events">School events</RouterLink>
         <RouterLink to="/admissions">Admissions guidance</RouterLink>
         <RouterLink to="/resources">Forms & downloads</RouterLink>

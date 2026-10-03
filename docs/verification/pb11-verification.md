@@ -63,3 +63,25 @@ enrollment is PB-12. The unavailable SHS withdrawal PDF is excluded. These are
 not part of the implemented two-form download flow. Public Storage URLs cannot
 be revoked by merely hiding a resource listing; private documents need private
 storage and authorized access.
+
+## Integration recheck — 3 October 2026
+
+Merged the current main (4b6c2c4, including PB-12) into this feature branch.
+Resolved README, package scripts, and lockfile conflicts while retaining the
+enrollment API checks and adding check:resources. There is no diff to server/,
+api/, or vercel.json compared with main.
+
+- pnpm lint and pnpm build: passed, including enrollment API type checking.
+- pnpm test: 182 tests passed across 12 files, covering resources and enrollment.
+- pnpm test:runtime: native Node entry points/configuration check passed.
+- pnpm check:resources: both original file hashes and anonymous column boundaries passed.
+- Browser: both forms loaded from live Supabase, no captured console errors.
+- Combined Apply/Resources navigation at 1024 pixels: no overlap or overflow.
+- Mobile at 390 pixels: Menu → Resources → Download took three taps; menu
+  closed on navigation and the resources page had no horizontal overflow.
+- Both actual browser downloads were saved on disk with the original bytes and
+  SHA-256 hashes above. New copies have a browser-added (1) filename suffix.
+- New proof: pb11-resources-current-desktop.png and pb11-resources-current-mobile.png.
+
+The branch runs locally on port 5173. Production resources UI awaits PR merge;
+the shared Supabase PDFs and resource records are already configured.
