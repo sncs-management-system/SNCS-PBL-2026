@@ -57,7 +57,7 @@ h3 { font-size: 1.22rem; letter-spacing: -0.025em; }
 .brand span { display: grid; gap: .14rem; }
 .brand strong { color: var(--red-800); font-family: "Libre Franklin", sans-serif; font-size: .92rem; }
 .brand small { color: var(--muted); font-size: .72rem; }
-.desktop-nav { display: flex; align-items: center; gap: 1.55rem; }
+.desktop-nav { display: flex; align-items: center; gap: 1.2rem; white-space: nowrap; }
 .desktop-nav a { position: relative; padding: 1.8rem 0; color: #443733; font-size: .9rem; font-weight: 700; text-decoration: none; }
 .desktop-nav a::after { content: ""; position: absolute; left: 0; right: 100%; bottom: 1.1rem; height: 3px; background: var(--gold-500); transition: right .2s ease; }
 .desktop-nav a:hover::after, .desktop-nav a.router-link-active::after { right: 0; }
@@ -231,6 +231,10 @@ h3 { font-size: 1.22rem; letter-spacing: -0.025em; }
 .admissions-next > div { flex: 1 1 500px; max-width: 760px; }
 .event-list-card .meta { line-height: 1.6; }
 
+@media (max-width: 1020px) {
+  .desktop-nav { display: none; }
+  .mobile-menu { display: block; }
+}
 @media (max-width: 860px) {
   .desktop-nav { display: none; }
   .mobile-menu { display: block; }
@@ -270,4 +274,36 @@ h3 { font-size: 1.22rem; letter-spacing: -0.025em; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+}
+
+.resources-hero { padding-block: clamp(2.7rem, 6vw, 4.5rem); }
+.resources-hero h1 { font-size: clamp(2.6rem, 5.5vw, 4.5rem); }
+.resources-section { padding-top: 3rem; }
+.resources-guidance { margin: 0 0 2.4rem; color: var(--muted); }
+.resource-group { margin-bottom: 2.5rem; }
+.resource-group-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 1.2rem; }
+.resource-group-heading h2 { font-size: clamp(1.7rem, 3vw, 2.5rem); }
+.resource-group-heading span { color: var(--muted); white-space: nowrap; }
+.resource-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 1rem; }
+.resource-card { display: grid; grid-template-columns: 54px minmax(0, 1fr) auto; align-items: center; gap: 1.4rem; padding: 1.6rem; background: white; border: 1px solid var(--line); border-left: 4px solid var(--gold-500); }
+.resource-document { display: grid; place-items: center; width: 54px; height: 66px; border: 1px solid var(--line); border-radius: 4px; background: var(--cream-100); color: var(--red-800); font-size: .78rem; font-weight: 800; }
+.resource-copy h3 { line-height: 1.35; overflow-wrap: anywhere; }
+.resource-copy p { margin: .55rem 0 0; color: var(--muted); font-size: .9rem; }
+.resource-copy p span { padding: 0 .25rem; }
+.resource-download { gap: .7rem; font: inherit; font-weight: 800; cursor: pointer; }
+.resource-download:disabled { opacity: .65; cursor: wait; }
+.resource-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 1.2rem; }
+.admissions-next > .resource-actions { flex: 0 1 auto; }
+.resource-state { padding: 2rem; border: 1px solid var(--line); background: white; }
+.resource-state h2 { font-size: 1.7rem; }
+.resource-state button { cursor: pointer; font: inherit; font-weight: 800; }
+.resource-download-error { grid-column: 2 / -1; margin: 0; color: var(--red-800); }
+.resource-notice { color: var(--red-800); }
+.resource-notice:empty { margin: 0; }
+.resource-print-note { font-size: .9rem; max-width: 760px; }
+@media (max-width: 640px) {
+  .resource-card { grid-template-columns: 42px minmax(0, 1fr); gap: 1rem; padding: 1.2rem; }
+  .resource-document { width: 42px; height: 54px; }
+  .resource-download, .resource-download-error { grid-column: 1 / -1; }
+  .resources-guidance .text-link { display: inline-block; }
 }

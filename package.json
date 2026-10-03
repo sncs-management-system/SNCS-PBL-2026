@@ -13,7 +13,8 @@
     "lint": "eslint .",
     "typecheck": "vue-tsc --noEmit && tsc --project api/tsconfig.json --noEmit",
     "test": "vitest run src server",
-    "test:runtime": "node scripts/check-enrollment-runtime.mjs"
+    "test:runtime": "node scripts/check-enrollment-runtime.mjs",
+    "check:resources": "node scripts/verify-resources.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.2",

@@ -1,6 +1,6 @@
 # Supabase and Vercel setup for PB-11
 
-Setup checked on October 2, 2026 (Asia/Manila). PB-11 feature work is still pending.
+Setup and PB-11 implementation checked on October 2, 2026 (Asia/Manila).
 
 ## Existing projects
 
@@ -50,9 +50,8 @@ Setup validation passed: API/key check, resources endpoint check, `pnpm lint`,
 and `pnpm build`. The build includes TypeScript checking. These setup files are
 included with the `feat/pb10-content-completion` branch for team review.
 
-The current public pages still use local content; no Supabase adapter is installed
-or called by the frontend yet. Environment variables prepare configuration but
-do not create that adapter automatically. Vite reads local env files at startup;
+The Resources page now reads Supabase using the installed client and typed adapter.
+Other public content pages continue to use local CMS-ready records. Vite reads local env files at startup;
 restart the dev server after changes. Changes in Vercel need a new deployment.
 
 ## Database and Storage observations
@@ -60,41 +59,41 @@ restart the dev server after changes. Changes in Vercel need a new deployment.
 The revised ERD and current `public.resources` table agree on these columns:
 
 ```text
-id, title, category, storage_path, file_size_bytes, status, uploaded_by, updated_at
+id, title, category, storage_path, file_size_bytes, status, uploaded_by, updated_at, visibility
 ```
 
-The table currently has no records. All public-schema tables have RLS enabled
-with no policies listed. The publishable key therefore cannot read resource rows
-yet. Keep RLS enabled and implement a narrowly scoped resource SELECT policy as
-part of PB-11.
+The table now has two public/published TLC records. RLS remains enabled, with a
+SELECT policy requiring both published status and public visibility. Anonymous
+and authenticated roles have SELECT access to the seven listing columns only;
+uploaded_by, updated_at and wildcard reads are denied. No public write policy
+was added. Other table permissions were not changed.
 
-The existing Storage bucket is `resource-files`, marked PUBLIC, with no policies
-listed and no MIME restrictions or custom size limit. Public buckets serve known
+The existing Storage bucket is `resource-files`, marked PUBLIC, with no public
+upload policies, application/pdf uploads and a 10,485,760-byte limit. Public buckets serve known
 file URLs independently of resource-table visibility. Use this bucket only for
 official files approved for public access; use private storage for drafts,
-restricted references, and enrollment documents. Configure PDF uploads and the
-10 MB limit before resource administration work.
+restricted references, and enrollment documents.
 
-The ERD has `status` but no separate `visibility`/`is_public` column. US-03 requires
-both public and published resources. Resolve this in the PB-11 migration and
-enforce the same rule in the query and RLS policy before listing records. Do not
-assume that `status = 'published'` proves public visibility.
+The original ERD has status without visibility; the current table adds constrained
+public/private visibility defaulting to private. US-03's public/published boundary
+is enforced by both the adapter query and the RLS policy. The visibility field,
+policy, listing grants and bucket limits already existed when this implementation
+resumed. They are preserved in the repeatable PB-11 migration.
 
-## PB-11 work for the next session
+## PB-11 applied setup
 
-1. Work on a PB-11 feature branch with accurate authorship for the person doing
-   the implementation. Keep the backlog owner and actual contributor distinct.
-2. Add the public-visibility field and resource read policy, matching the revised
-   schema and US-03. Restrict browser reads to the listing fields.
-3. Install the Supabase client and add a resources adapter using
-   `import.meta.env.VITE_SUPABASE_URL` and
-   `import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY`.
-4. Build a Resources route reachable from navigation, grouping PDFs by category
-   and showing each title, category, and formatted file size.
-5. Use approved PDFs in `resource-files` and make Download start a PDF download.
-   Verify the actual browser download behavior, including cross-origin handling.
-6. Verify draft/private records stay hidden, category grouping, file sizes,
-   downloads, empty/error states, and mobile layout.
+Implementation branch: `feat/pb11-resource-downloads`, based on PB-10 commit 39daca5.
+See [PB-11 notes](pb11-preparation.md) for exact migration/seed paths and provenance,
+and [verification](verification/pb11-verification.md) for real download checks.
+Run `pnpm check:resources` to recheck the two records/files without writing data.
+
+No app users existed yet. The migration allows NULL uploaded_by for these two
+initial dashboard imports and keeps the users foreign key. The manifest records
+source URLs, hashes, import method and NULL attribution. Future CMS uploads must
+set the actual staff ID and need their own authorized write policies.
+
+The database changes and uploads are applied. The local website code is on the
+PB-11 branch; Vercel needs that code pushed/deployed before serving this new route.
 
 PDF preview (US-04) is post-MVP. CMS upload/edit screens belong to PB-01, not
 today's setup or PB-11's public resource browsing scope.
