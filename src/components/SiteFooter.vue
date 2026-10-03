@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { RouterLink } from "vue-router";
+import { getPublicSchoolContactInformation } from "@/lib/content/directory";
 
 const currentYear = new Date().getFullYear();
+const schoolInformation = getPublicSchoolContactInformation();
 </script>
 
 <template>
@@ -17,17 +19,18 @@ const currentYear = new Date().getFullYear();
         <RouterLink to="/campus">Campus life</RouterLink>
         <RouterLink to="/news">Latest news</RouterLink>
         <RouterLink to="/enrollment">Apply for enrollment</RouterLink>
+        <RouterLink to="/events">School events</RouterLink>
+        <RouterLink to="/admissions">Admissions guidance</RouterLink>
       </div>
       <div>
         <p class="footer-heading">Visit</p>
-        <p>Signal Village</p>
-        <p>Taguig City</p>
+        <template v-if="schoolInformation"><p>{{ schoolInformation.address }}</p><p>{{ schoolInformation.officeHours }}</p></template>
         <RouterLink to="/contact">Contact the school</RouterLink>
       </div>
     </div>
     <div class="container footer-bottom">
       <span>© {{ currentYear }} Sto. Niño Catholic School, Inc.</span>
-      <span>Public website MVP · PB-10</span>
+      <span>Faith · Excellence · Service</span>
     </div>
   </footer>
 </template>

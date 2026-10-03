@@ -9,6 +9,7 @@
     "start": "tsx --env-file=.env server/index.ts",
     "build": "vue-tsc --noEmit && tsc --project api/tsconfig.json --noEmit && vite build",
     "preview": "vite preview",
+    "check:supabase": "node scripts/check-supabase.mjs",
     "lint": "eslint .",
     "typecheck": "vue-tsc --noEmit && tsc --project api/tsconfig.json --noEmit",
     "test": "vitest run src server",

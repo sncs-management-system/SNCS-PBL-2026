@@ -3,10 +3,10 @@
 This guide configures the `enrollment-application` branch for local development
 and Vercel Preview. The public form is at `/enrollment`.
 
-The current preview is hosted in **Jan's personal Vercel project**. The GitHub
-repository belongs to the group organization; these are separate services.
+The team's deployment uses the [shared SNCS Vercel project](https://vercel.com/miles-projects-1a6aa47f/sncs-pbl-2026).
+The GitHub repository belongs to the group organization; these are separate services.
 Teammates can test the shared preview without creating another Vercel project.
-GitHub membership does not automatically provide access to Jan's Vercel settings.
+GitHub membership does not automatically provide access to this project's Vercel settings.
 If someone deploys a separate Vercel project, they must configure its environment
 variables and its own Turnstile hostname.
 
@@ -122,10 +122,10 @@ Both keys must come from the same widget. The form and server verification are
 already implemented; no extra CAPTCHA package or script needs to be added.
 [Cloudflare widget setup](https://developers.cloudflare.com/turnstile/get-started/widget-management/dashboard/)
 
-For Jan's current branch preview, add this hostname:
+For the shared project's current branch preview, add this hostname:
 
 ```text
-sncs-pbl-2026-git-enrollment-application-jans-projects-244b4656.vercel.app
+sncs-pbl-2026-git-enrollment-app-9dff5c-miles-projects-1a6aa47f.vercel.app
 ```
 
 Enter only the hostname: no scheme, path, port, trailing slash, or `*` wildcard.
@@ -136,8 +136,8 @@ parent domain. A separate teammate deployment needs its own actual hostname.
 The matching application settings for this preview are:
 
 ```dotenv
-TURNSTILE_HOSTNAME=sncs-pbl-2026-git-enrollment-application-jans-projects-244b4656.vercel.app
-APP_ORIGIN=https://sncs-pbl-2026-git-enrollment-application-jans-projects-244b4656.vercel.app
+TURNSTILE_HOSTNAME=sncs-pbl-2026-git-enrollment-app-9dff5c-miles-projects-1a6aa47f.vercel.app
+APP_ORIGIN=https://sncs-pbl-2026-git-enrollment-app-9dff5c-miles-projects-1a6aa47f.vercel.app
 ```
 
 PB-12 accepts one configured origin and verifies the exact CAPTCHA hostname and
@@ -200,7 +200,7 @@ the branch and wait for **Ready**. Open the stable Git branch URL, then append
 
 Current shared preview:
 
-[Open enrollment Preview](https://sncs-pbl-2026-git-enrollment-application-jans-projects-244b4656.vercel.app/enrollment)
+[Open enrollment Preview](https://sncs-pbl-2026-git-enrollment-app-9dff5c-miles-projects-1a6aa47f.vercel.app/enrollment)
 
 Vercel also generates a unique URL for each individual deployment. The **Git
 branch URL** stays the same across new branch deployments, so use it for testing
