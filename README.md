@@ -1,21 +1,27 @@
 # SNCS Management System
 
 This repository contains the Sto. Niño Catholic School (SNCS) management-system
-project. The current Sprint 1 scope is **PB-10: Public Website Content**, delivered
-as a responsive Vue.js single-page application.
+project. This branch adds **PB-12: Online Enrollment Application** to the existing
+PB-10 public website, with Pre-school, Elementary, JHS, and SHS application forms, an Express API, Turnstile, and Supabase persistence.
+
+Start with [the enrollment setup guide](docs/enrollment-setup.md) for environment
+variables, Supabase and Turnstile credentials, local development, and Vercel
+branch previews. See [PB-12 implementation and field mapping](docs/pb12-enrollment.md)
+for the feature details. The application route is `/enrollment`; live submission
+requires the API and a working connection to the existing team database.
+No database migration is required.
 
 ## Technology alignment
 
 The project follows the architecture proposed in the SSYSADD1 paper:
 
 - **Frontend:** Vue 3, Vue Router, TypeScript, and Vite
-- **Backend (future backlog):** Node.js with Express
-- **Data and files (future backlog):** Supabase PostgreSQL and Storage
+- **Backend:** Node.js with Express (PB-12 enrollment API)
+- **Data:** Existing Supabase PostgreSQL tables (PB-12); document uploads are disabled
 - **Authentication (future backlog):** Express-managed authentication and sessions
 - **Scheduling (future backlog):** a separate Python service using Google OR-Tools
 
-Only the public frontend is implemented in this branch. Backend, authentication,
-database, CMS, and scheduling work remain outside PB-10.
+Staff authentication, Registrar screens, CMS, and scheduling remain outside PB-12.
 
 ## PB-10 public website
 
@@ -33,7 +39,7 @@ database, CMS, and scheduling work remain outside PB-10.
 
 ## Local development
 
-Use Node.js 20.19+ (or 22.12+) and pnpm.
+Use Node.js 22.12+ and pnpm.
 
 ```bash
 pnpm install
@@ -79,7 +85,8 @@ replace this data source while preserving the page components and enforcing the
 same `published` and `public` visibility contract. This frontend filter is not a
 database access policy: a future backend must return only public records and
 enforce authorization before sending data to the browser. CMS editing screens,
-Supabase content reads, downloads, and enrollment submission are still pending.
+Supabase content reads, and downloads are still pending. PB-12 adds
+enrollment submission; live use requires the server configuration described above.
 
 ## Asset note
 

@@ -1,0 +1,5 @@
+-- Retired before hosted integration: the original standalone schema conflicts with the team schema.
+-- This migration is intentionally a no-op. Apply SNCS_Schema_Final.sql first,
+-- then 202610010002_pb12_schema_alignment.sql.
+-- If the former migration was applied, preserve and reconcile its records separately.
+-- The new migration refuses incompatible legacy tables and does not drop data.
